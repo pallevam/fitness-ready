@@ -1,0 +1,73 @@
+# Everything runs locally: health data never leaves the machine. The only
+# outbound traffic is the agent's and the judge's LLM calls (SPEC §5).
+services:
+  tools:
+    build: .
+    container_name: wc-tools
+    ports: ["8000:8000"]
+    volumes:
+      # The DuckDB file is built on the host by `python -m loader.load_garmin`.
+      - ./wearable.duckdb:/data/wearable.duckdb:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: wc-n8n
+    ports: ["5678:5678"]
+    environment:
+      - N8N_SECURE_COOKIE=false
+      - GENERIC_TIMEZONE=Asia/Kolkata
+      - N8N_DIAGNOSTICS_ENABLED=false
+      # Reach the tools server from inside a Code/HTTP node as http://tools:8000
+      - TOOLS_BASE_URL=http://tools:8000
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - LANGFUSE_HOST=http://langfuse:3000
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n:/workflows:ro
+    depends_on:
+      tools:
+        condition: service_healthy
+
+  langfuse-db:
+    image: postgres:16-alpine
+    container_name: wc-langfuse-db
+    environment:
+      - POSTGRES_USER=langfuse
+      - POSTGRES_PASSWORD=langfuse
+      - POSTGRES_DB=langfuse
+    volumes:
+      - langfuse_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # v2 is intentional: it needs only Postgres, where v3 adds ClickHouse, Redis
+  # and MinIO. Traces, latency, cost and prompt versions are all we need.
+  langfuse:
+    image: langfuse/langfuse:2
+    container_name: wc-langfuse
+    ports: ["3000:3000"]
+    environment:
+      - DATABASE_URL=postgresql://langfuse:langfuse@langfuse-db:5432/langfuse
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-dev-only-not-a-secret}
+      - SALT=${LANGFUSE_SALT:-dev-only-not-a-secret}
+      - ENCRYPTION_KEY=${LANGFUSE_ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+      - TELEMETRY_ENABLED=false
+    depends_on:
+      langfuse-db:
+        condition: service_healthy
+
+volumes:
+  n8n_data:
+  langfuse_db:
