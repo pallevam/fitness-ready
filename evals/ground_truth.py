@@ -116,13 +116,14 @@ def hrv_below_baseline(conn, as_of):
 
 
 @truth("A08")
-def running_km_30d(conn, as_of):
+def badminton_minutes_30d(conn, as_of):
+    """Badminton is this profile's main source of intensity, so the set asks about it."""
     return round(_scalar(
         conn,
-        "SELECT sum(distance_km) FROM activities "
-        "WHERE type = 'running' AND start_time BETWEEN ? AND ?",
+        "SELECT sum(duration_min) FROM activities "
+        "WHERE type = 'badminton' AND start_time BETWEEN ? AND ?",
         [as_of - timedelta(days=29), reference_instant(as_of)],
-    ), 1)
+    ))
 
 
 @truth("A09")

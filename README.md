@@ -23,7 +23,7 @@ tests/    the definitions in SPEC §6.3, the loader, the tool contracts, the dat
 
 ```bash
 pip install -e ".[dev]"
-make fixture     # synthetic export, Garmin's field names and units
+make fixture     # synthetic export, calibrated to the real training profile
 make load        # -> wearable.duckdb
 make test
 make serve       # http://localhost:8000/docs

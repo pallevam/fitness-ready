@@ -190,3 +190,28 @@ def test_activity_without_zone_data_gets_no_hard_minutes():
         "duration": 600_000,
     })
     assert row.get("hard_minutes") is None
+
+
+def test_activity_energy_is_converted_from_kilojoules():
+    """The export records activity `calories` in kJ (SPEC implementation note)."""
+    (row,), _ = rows_from_record("activities", {
+        "activityId": 3,
+        "startTimeLocal": "2026-08-18 06:00:00",
+        "activityType": "running",
+        "duration": 4_740_000,
+        "calories": 3636.93736,
+    })
+    assert row["calories"] == 869
+
+
+def test_api_kilocalories_win_over_the_export_field():
+    """`activeKilocalories` is already kcal, so it must not be divided again."""
+    (row,), _ = rows_from_record("activities", {
+        "activityId": 4,
+        "startTimeLocal": "2026-08-18 06:00:00",
+        "activityType": "running",
+        "duration": 4_740_000,
+        "calories": 3636.93736,
+        "activeKilocalories": 869,
+    })
+    assert row["calories"] == 869

@@ -319,6 +319,14 @@ table at all; the only HRV anywhere is 13 scattered readings inside
 2026-03-02. Scored sleep stops at 2026-03-02 too — the watch is not worn
 overnight. Daytime data (activities, resting HR, steps) is good throughout.
 
+**A fifth mapping bug: activity energy is kilojoules.** The export's
+`activities.calories` is kJ, not kcal. Verified on a 10.02 km / 79 min run:
+`calories` 3636.9 → 869 kcal, and `bmrCalories` 481.9 → 115 kcal for the same 79
+minutes at rest. Both are right at 4.184 kJ/kcal and absurd without it. The
+loader now divides, and prefers `activeKilocalories` (already kcal) where the
+record carries it — which is what the API returns, so the fetcher must emit that
+key rather than `calories`.
+
 **Consequence: two databases.** `wearable.duckdb` is built from the fixture and
 remains what the tools, n8n and the eval dataset point at;
 `wearable-real.duckdb` holds the export. The readiness rubric in §8 cannot run on
@@ -326,3 +334,40 @@ the real data, so the demo keeps the fixture as its subject and uses the real
 database for one deliberate beat: point the agent at data with no HRV and let the
 eval harness catch it inventing a readiness call. Bucket A ground truth stays
 pinned to the fixture; `make evals` must not be run against the real database.
+
+### The fixture is now calibrated to the real profile (15 Sep 2026)
+
+`loader/make_fixture.py` was rewritten to model **this account, wearing the watch
+overnight** — rather than the generic runner the first version invented. Every
+constant in `PROFILE` and the `DAILY_*`/`SLEEP_*` blocks was measured from
+`wearable-real.duckdb`:
+
+| Dimension | Real | Fixture |
+|---|---|---|
+| Activity mix | strength 55%, walking 19%, badminton 17% | 49% / 24% / 20% |
+| Median session | strength 50 min @ 112 bpm | 50 min @ 113 bpm |
+| Badminton zone-4 | 18.4 min median | 17.2 min |
+| Hard sessions | 11% of activities | 10% |
+| Steps / stress / body battery | 6174 / 34.9 / 61 | 6437 / 35.4 / 61 |
+| Sleep | 342 min, score 70.3 | 340 min, score 69.5 |
+
+Three deliberate departures from the real data, each because the real data is
+unusable for the demo:
+
+1. **Resting HR is anchored to 57.5**, the overnight-worn mean (58.3), not the
+   all-days mean (62.7). The 4.4 bpm gap between those is a measurement artifact
+   of not wearing the watch at night, and this fixture assumes it is worn.
+2. **Sleep and HRV exist.** The HRV baseline band `[50, 65]` is consistent with
+   the 13 ONBOARDING samples the account does have (46–68) and with a resting HR
+   in the high 50s.
+3. **Training effect and recovery hours are present**, which the export omits but
+   the Connect API supplies. The fixture therefore models the export *plus* the
+   API — the merged view we expect once the pull runs.
+
+Short sleep (5.7 h mean) was kept rather than idealised: inventing eight-hour
+nights would make every readiness call green and the demo pointless. The pinned
+demo week now ends Red — sleep 72 passes, HRV 48 is below baseline, resting HR
+is +3.3, and 18 hours of recovery are outstanding from a hard badminton session.
+
+The eval set moved with it: `A08` now asks about badminton minutes rather than
+running kilometres, and `A09`'s answer is `strength_training`.

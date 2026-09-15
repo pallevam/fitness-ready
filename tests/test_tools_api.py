@@ -39,7 +39,7 @@ def test_sleep_exposes_validation_and_flags_untrustworthy_nights(client):
 
 def test_hrv_trend_reports_both_means_and_the_gap(client):
     body = client.get("/tools/get_hrv_trend", params={"days": 30, "as_of": AS_OF}).json()
-    assert body["baseline_low"] == 43 and body["baseline_high"] == 52
+    assert body["baseline_low"] == 50 and body["baseline_high"] == 65
     assert body["mean_7d"] is not None and body["mean_60d"] is not None
     assert body["latest_vs_baseline"] == "below"
     assert "no HRV on 2026-09-11" in body["data_gaps"]
@@ -76,7 +76,8 @@ def test_readiness_bundle_shape(client):
     # The fixture's pinned week deliberately sits above baseline (SPEC §8 amber/red).
     assert resting["delta"] > 3
     hard = body["last_hard_session"]
-    assert hard["type"] == "running"
+    # Badminton is this profile's hard training, and the rule is sport-agnostic.
+    assert hard["type"] == "badminton"
     assert hard["recovery_remaining_hours"] == max(
         0, round(hard["recovery_time_hours"] - hard["hours_ago"])
     )
@@ -87,7 +88,7 @@ def test_readiness_on_a_day_with_no_hrv_says_so(client):
     assert body["hrv"]["last_night_avg"] is None
     assert "no HRV on 2026-09-11" in body["data_gaps"]
     # The baseline band still comes from the most recent night that had one.
-    assert body["hrv"]["baseline_low"] == 43
+    assert body["hrv"]["baseline_low"] == 50
 
 
 def test_readiness_defaults_to_the_latest_loaded_day(client):

@@ -67,6 +67,18 @@ def m_to_km(value: Any) -> float | None:
     return None if n is None else round(n / 1000.0, 4)
 
 
+def kj_to_kcal(value: Any) -> int | None:
+    """The account export records activity energy in kilojoules.
+
+    Verified against a 10.02 km / 79 min run: `calories` 3636.9 -> 869 kcal, and
+    `bmrCalories` 481.9 -> 115 kcal for the same 79 minutes at rest. Both are
+    right at 4.184 kJ/kcal and absurd without it. The API reports kcal under
+    `activeKilocalories`, which is mapped separately.
+    """
+    n = _num(value)
+    return None if n is None else int(round(n / 4.184))
+
+
 def cm_to_m(value: Any) -> float | None:
     n = _num(value)
     return None if n is None else round(n / 100.0, 1)
@@ -216,7 +228,7 @@ ACTIVITIES: Spec = {
     "distance_km": (("distance", cm_to_km), ("distanceMeters", m_to_km)),
     "avg_hr": (("avgHr", as_int), ("averageHR", as_int)),
     "max_hr": (("maxHr", as_int), ("maxHR", as_int)),
-    "calories": (("calories", as_int), ("activeKilocalories", as_int)),
+    "calories": (("activeKilocalories", as_int), ("calories", kj_to_kcal)),
     "aerobic_te": (("aerobicTrainingEffect", as_float),),
     "anaerobic_te": (("anaerobicTrainingEffect", as_float),),
     "recovery_time_hours": (
