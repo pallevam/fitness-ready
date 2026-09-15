@@ -335,6 +335,36 @@ database for one deliberate beat: point the agent at data with no HRV and let th
 eval harness catch it inventing a readiness call. Bucket A ground truth stays
 pinned to the fixture; `make evals` must not be run against the real database.
 
+### Tracing goes through a LiteLLM proxy (15 Sep 2026)
+
+§5 assumed n8n would emit Langfuse traces from environment variables. It does
+not: with `LANGFUSE_*` set on the n8n service, the agent made Anthropic calls and
+Langfuse received zero traces. The AI Agent node has no Langfuse exporter.
+
+The fix is a `litellm` service that every model call routes through, with
+LiteLLM's `success_callback`/`failure_callback` writing to Langfuse. n8n talks to
+it with the OpenAI Chat Model node (Base URL `http://litellm:4000/v1`), so the
+`LANGFUSE_*` variables have been removed from the n8n service — it now holds no
+Langfuse credentials and no provider keys at all.
+
+**Langfuse v2 compatibility, verified rather than assumed.** LiteLLM's legacy
+`langfuse` callback targets the v2 ingestion API; `langfuse_otel` is the v3/v4
+path. The pinned image `ghcr.io/berriai/litellm:v1.101.0` bundles langfuse SDK
+2.59.7 — the exact version LiteLLM's docs pin — so the v2 server this stack runs
+needs no upgrade. Both facts are load-bearing: moving Langfuse to v3 would
+require switching the callback, and switching the callback without moving the
+server would silently stop tracing. A smoke test confirmed a Claude tool call
+through the proxy produces a Langfuse trace with model, latency, token counts
+and cost ($0.0018 for one call).
+
+**What this changes about the traces themselves.** LiteLLM sees individual model
+calls, not agent runs — one trace per call, where an n8n-native exporter would
+have given one trace per agent execution with nested tool spans. Session
+grouping recovers most of it: `x-litellm-session-id` on the credential's custom
+header puts a whole eval run in one Langfuse session. Per-case tagging is not
+reachable from the Chat Model node, because n8n credentials resolve outside
+per-item context. See `n8n/README.md` for the workaround and its cost.
+
 ### The fixture is now calibrated to the real profile (15 Sep 2026)
 
 `loader/make_fixture.py` was rewritten to model **this account, wearing the watch
