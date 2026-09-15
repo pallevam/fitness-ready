@@ -127,6 +127,10 @@ VALIDATION_ALIASES = {
     "AUTO_CONFIRMED_TENTATIVE": "AUTO_TENTATIVE",
     "OFFWRIST": "OFF_WRIST",
     "OFF_WRIST_TENTATIVE": "OFF_WRIST",
+    # Seen in the real export: a night the user confirmed by hand, which the
+    # SPEC §6.3 trust rule must treat exactly like MANUAL.
+    "MANUALLY_CONFIRMED": "MANUAL",
+    "MANUALLY_CORRECTED": "MANUAL",
 }
 
 
@@ -223,6 +227,10 @@ ACTIVITIES: Spec = {
     ),
     "avg_speed_kmh": (("avgSpeed", cmps_to_kmh), ("averageSpeedMps", mps_to_kmh)),
     "elevation_gain_m": (("elevationGain", cm_to_m), ("elevationGainMeters", as_float)),
+    # Minutes at or above zone 4 (153 bpm for this profile). The account export
+    # carries no numeric training effect, so this is what backs the hard-session
+    # rule in SPEC §6.3 -- see loader.load_garmin._derive_activities.
+    "hard_minutes": (("hardMinutes", as_float),),
 }
 
 SPECS: dict[str, Spec] = {

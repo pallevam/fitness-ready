@@ -33,19 +33,29 @@ HARD_SESSION_AEROBIC_TE = 3.0
 HARD_SESSION_ANAEROBIC_TE = 3.0
 HARD_SESSION_RECOVERY_HOURS = 24
 
+# Training effect and recovery time are absent from the account export -- it
+# carries only message enums like "IMPROVING_LACTATE_THRESHOLD_12", whose
+# suffixes are message ids, not values. So the rule also accepts time at or
+# above HR zone 4 (153 bpm on this profile), which every activity records.
+# 20 minutes is the standard threshold for a genuinely hard session and marks
+# 11% of the real history, concentrated in badminton and running.
+HARD_SESSION_ZONE4_MINUTES = 20.0
+
 HARD_SESSION_SQL = (
     f"(coalesce(aerobic_te, 0) >= {HARD_SESSION_AEROBIC_TE}"
     f" OR coalesce(anaerobic_te, 0) >= {HARD_SESSION_ANAEROBIC_TE}"
-    f" OR coalesce(recovery_time_hours, 0) >= {HARD_SESSION_RECOVERY_HOURS})"
+    f" OR coalesce(recovery_time_hours, 0) >= {HARD_SESSION_RECOVERY_HOURS}"
+    f" OR coalesce(hard_minutes, 0) >= {HARD_SESSION_ZONE4_MINUTES})"
 )
 
 
 def is_hard_session(activity: Mapping[str, Any]) -> bool:
-    """SPEC §6.3. Applies to every activity type, so strength and cycling count."""
+    """SPEC §6.3. Applies to every activity type, so strength and badminton count."""
     return (
         (activity.get("aerobic_te") or 0) >= HARD_SESSION_AEROBIC_TE
         or (activity.get("anaerobic_te") or 0) >= HARD_SESSION_ANAEROBIC_TE
         or (activity.get("recovery_time_hours") or 0) >= HARD_SESSION_RECOVERY_HOURS
+        or (activity.get("hard_minutes") or 0) >= HARD_SESSION_ZONE4_MINUTES
     )
 
 

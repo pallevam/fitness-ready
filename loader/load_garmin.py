@@ -40,7 +40,7 @@ TABLE_COLUMNS: dict[str, tuple[str, ...]] = {
     "activities": (
         "activity_id", "start_time", "type", "duration_min", "distance_km", "avg_hr",
         "max_hr", "calories", "aerobic_te", "anaerobic_te", "recovery_time_hours",
-        "avg_speed_kmh", "elevation_gain_m",
+        "avg_speed_kmh", "elevation_gain_m", "hard_minutes",
     ),
     "user_metrics": ("date", "metric", "value"),
 }
@@ -56,7 +56,8 @@ PRIMARY_KEY: dict[str, tuple[str, ...]] = {
 # VO2 max / fitness age arrive in a wide shape; user_metrics is long (SPEC §6.2).
 USER_METRIC_KEYS: dict[str, tuple[str, ...]] = {
     "vo2max": ("vo2MaxPreciseValue", "vo2MaxValue", "vo2Max", "generic.vo2MaxPreciseValue", "generic.vo2MaxValue"),
-    "fitness_age": ("fitnessAge", "achievableFitnessAge", "fitnessAgeValue"),
+    # `currentBioAge` is what the real export's fitnessAgeData records call it.
+    "fitness_age": ("fitnessAge", "achievableFitnessAge", "fitnessAgeValue", "currentBioAge"),
 }
 USER_METRIC_DATE_KEYS = ("calendarDate", "asOfDateGmt", "date", "generic.calendarDate")
 
@@ -75,7 +76,40 @@ class LoadStats:
 
 # ------------------------------------------------------------ row derivation
 
+def _pick_from_list(record: dict[str, Any], key: str, match: tuple[str, str], value_key: str) -> Any:
+    """Read a value out of a list of typed dicts.
+
+    The real export nests several daily metrics as `{"aggregatorList": [{"type":
+    "TOTAL", ...}]}`. `flatten()` deliberately does not walk lists, so these are
+    pulled out by name here rather than by widening the flattener.
+    """
+    entries = record.get(key)
+    if not isinstance(entries, list):
+        return None
+    field_name, wanted = match
+    for entry in entries:
+        if isinstance(entry, dict) and str(entry.get(field_name, "")).upper() == wanted:
+            return entry.get(value_key)
+    return None
+
+
 def _derive_daily(row: dict[str, Any], record: dict[str, Any]) -> dict[str, Any]:
+    # Stress and body battery are nested in the real export; the flat keys in
+    # fieldmap.DAILY cover the shapes that put them at the top level.
+    if row.get("avg_stress") is None:
+        row["avg_stress"] = as_int(
+            _pick_from_list(record, "allDayStress.aggregatorList", ("type", "TOTAL"), "averageStressLevel")
+        )
+    if row.get("body_battery_high") is None:
+        row["body_battery_high"] = as_int(
+            _pick_from_list(record, "bodyBattery.bodyBatteryStatList",
+                            ("bodyBatteryStatType", "HIGHEST"), "statsValue")
+        )
+    if row.get("body_battery_low") is None:
+        row["body_battery_low"] = as_int(
+            _pick_from_list(record, "bodyBattery.bodyBatteryStatList",
+                            ("bodyBatteryStatType", "LOWEST"), "statsValue")
+        )
     if row.get("intensity_minutes") is None:
         moderate = as_int(record.get("moderateIntensityMinutes")) or 0
         vigorous = as_int(record.get("vigorousIntensityMinutes")) or 0
@@ -98,7 +132,15 @@ def _derive_sleep(row: dict[str, Any], record: dict[str, Any]) -> dict[str, Any]
     return row
 
 
+# Garmin reports time-in-zone in milliseconds; the seven zones sum to `duration`.
+HARD_ZONE_KEYS = ("hrTimeInZone_4", "hrTimeInZone_5", "hrTimeInZone_6")
+
+
 def _derive_activities(row: dict[str, Any], record: dict[str, Any]) -> dict[str, Any]:
+    if row.get("hard_minutes") is None:
+        zone_ms = [as_float(record.get(key)) for key in HARD_ZONE_KEYS]
+        if any(value is not None for value in zone_ms):
+            row["hard_minutes"] = round(sum(value or 0.0 for value in zone_ms) / 60_000.0, 1)
     if row.get("avg_speed_kmh") is None:
         distance, duration = row.get("distance_km"), row.get("duration_min")
         if distance and duration:

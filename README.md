@@ -33,6 +33,20 @@ make serve       # http://localhost:8000/docs
 curl 'localhost:8000/tools/get_readiness_inputs?date=2026-09-13'
 ```
 
+## Two databases, on purpose
+
+`wearable.duckdb` is built from the fixture and is what the tools server, n8n and
+the eval dataset point at. `wearable-real.duckdb` holds the real account export.
+They are kept apart because the real data cannot support the readiness rubric —
+see the implementation note in `SPEC.md` — and because mixing synthetic and real
+rows in one table would make every eval answer unexplainable.
+
+```bash
+make load        # fixture   -> wearable.duckdb
+make load-real   # export    -> wearable-real.duckdb
+WEARABLE_DB=wearable-real.duckdb make serve   # point the tools at real data
+```
+
 ## With the real export
 
 1. garmin.com → Account → Data Management → Export Your Data. The zip arrives by
@@ -40,8 +54,8 @@ curl 'localhost:8000/tools/get_readiness_inputs?date=2026-09-13'
 2. `python -m loader.inventory raw/` — check every file maps to a table and read
    the unmapped-field list. Extend `loader/discovery.py` (patterns) or
    `loader/fieldmap.py` (columns) until nothing important is unmapped.
-3. `python -m loader.load_garmin raw/` — idempotent; re-running a later export
-   converges rather than duplicating.
+3. `make load-real` — idempotent; re-running a later export converges rather
+   than duplicating.
 4. `python -m evals.ground_truth --write` — bucket A answers are derived from
    the database, never hand-typed.
 

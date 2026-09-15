@@ -32,7 +32,7 @@ SLEEP_COLUMNS = (
 ACTIVITY_COLUMNS = (
     "activity_id", "start_time", "type", "duration_min", "distance_km", "avg_hr",
     "max_hr", "calories", "aerobic_te", "anaerobic_te", "recovery_time_hours",
-    "avg_speed_kmh", "elevation_gain_m",
+    "avg_speed_kmh", "elevation_gain_m", "hard_minutes",
 )
 
 

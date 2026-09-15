@@ -113,3 +113,80 @@ def test_off_wrist_nights_survive_the_load_with_zero_minutes(conn):
         "SELECT total_min, validation FROM sleep WHERE date = ?", [date(2026, 9, 8)]
     ).fetchone()
     assert row == (0, "OFF_WRIST")
+
+
+# --- shapes the real account export uses, which the fixture never produced ---
+# Records below are hand-written in the export's shape with invented values; no
+# real health data lives in the test suite.
+
+def test_manually_confirmed_night_is_treated_as_manual():
+    """SPEC §6.3 excludes MANUAL; the export spells it MANUALLY_CONFIRMED."""
+    assert as_validation("MANUALLY_CONFIRMED") == "MANUAL"
+    (row,), _ = rows_from_record("sleep", {
+        "calendarDate": "2026-01-05",
+        "sleepTimeSeconds": 21600,
+        "sleepWindowConfirmationType": "MANUALLY_CONFIRMED",
+    })
+    assert row["validation"] == "MANUAL"
+
+
+def test_stress_is_read_from_the_nested_aggregator_list():
+    (row,), _ = rows_from_record("daily", {
+        "calendarDate": "2026-06-18",
+        "allDayStress": {"aggregatorList": [
+            {"type": "AWAKE", "averageStressLevel": 61},
+            {"type": "TOTAL", "averageStressLevel": 52},
+        ]},
+    })
+    assert row["avg_stress"] == 52
+
+
+def test_body_battery_is_read_from_the_nested_stat_list():
+    (row,), _ = rows_from_record("daily", {
+        "calendarDate": "2026-06-18",
+        "bodyBattery": {"bodyBatteryStatList": [
+            {"bodyBatteryStatType": "HIGHEST", "statsValue": 80},
+            {"bodyBatteryStatType": "LOWEST", "statsValue": 25},
+            {"bodyBatteryStatType": "MOSTRECENT", "statsValue": 25},
+        ]},
+    })
+    assert (row["body_battery_high"], row["body_battery_low"]) == (80, 25)
+
+
+def test_missing_nested_blocks_do_not_break_the_row():
+    (row,), _ = rows_from_record("daily", {"calendarDate": "2026-06-18", "totalSteps": 900})
+    assert row["steps"] == 900
+    assert row.get("avg_stress") is None
+
+
+def test_fitness_age_comes_from_current_bio_age():
+    rows, _ = rows_from_record("user_metrics", {
+        "asOfDateGmt": "2025-01-19T00:00:00.0",
+        "currentBioAge": 29.76,
+        "chronologicalAge": 29,
+    })
+    assert {r["metric"]: r["value"] for r in rows}["fitness_age"] == pytest.approx(29.76)
+
+
+def test_hard_minutes_sum_the_top_zones_from_milliseconds():
+    (row,), _ = rows_from_record("activities", {
+        "activityId": 1,
+        "startTimeLocal": "2026-09-10 06:00:00",
+        "activityType": "running",
+        "duration": 3_600_000,
+        "hrTimeInZone_3": 900_000,
+        "hrTimeInZone_4": 1_200_000,   # 20 min
+        "hrTimeInZone_5": 372_000,     # 6.2 min
+        "hrTimeInZone_6": 0,
+    })
+    assert row["hard_minutes"] == pytest.approx(26.2, abs=0.05)
+
+
+def test_activity_without_zone_data_gets_no_hard_minutes():
+    (row,), _ = rows_from_record("activities", {
+        "activityId": 2,
+        "startTimeLocal": "2026-09-10 06:00:00",
+        "activityType": "walking",
+        "duration": 600_000,
+    })
+    assert row.get("hard_minutes") is None

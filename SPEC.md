@@ -287,3 +287,42 @@ Decisions made while implementing Phases 0–2 and 4 that the spec left open:
   tool alongside the §11 decision on `run_sql` if that changes.
 - **Judge prompt ships in two versions.** `evals/judge_prompt_v1.md` is the
   biased rubric used for the §9.4 demo beat; `evals/judge_prompt.md` is the fix.
+
+### What the real export changed (15 Sep 2026)
+
+The account export arrived and was loaded (485 daily rows, 245 activities,
+2025-01-19 → 2026-09-12). Pattern discovery classified all 18 relevant files with
+no change to `loader/discovery.py`. Four mapping gaps and two data realities came
+out of it:
+
+**Mapping fixes** (the fixture could not have surfaced these):
+
+| Gap | Fix |
+|---|---|
+| Sleep validation `MANUALLY_CONFIRMED` fell outside the §6.2 vocabulary, so the §6.3 trust rule accepted a hand-edited night | alias to `MANUAL` in `VALIDATION_ALIASES` |
+| `avg_stress` empty: the export nests it at `allDayStress.aggregatorList[type=TOTAL]` | `_pick_from_list` in the daily deriver; `flatten()` still does not walk lists |
+| `body_battery_high/low` empty: nested at `bodyBattery.bodyBatteryStatList[HIGHEST/LOWEST]` | same |
+| All 318 fitness-age records dropped: the value key is `currentBioAge` | added to `USER_METRIC_KEYS` |
+
+**§6.3 hard session, amended.** The export carries *no* numeric training effect
+and no recovery time — only message enums (`IMPROVING_LACTATE_THRESHOLD_12`,
+where the suffix is a message id, not a value). Under the original rule, zero of
+245 real activities were hard. The rule now also accepts **≥20 minutes at or
+above HR zone 4**, stored in the new `activities.hard_minutes` column and derived
+from `hrTimeInZone_4..6` (milliseconds, and they sum to `duration`). That marks
+26 of 245 activities (11%), mostly badminton and running. The training-effect arm
+is unchanged, so fixture and API data still qualify on their own terms.
+
+**HRV is effectively absent, and so is recent sleep.** The export has no HRV
+table at all; the only HRV anywhere is 13 scattered readings inside
+`healthStatusData`, every one `ONBOARDING` with zeroed baselines and none after
+2026-03-02. Scored sleep stops at 2026-03-02 too — the watch is not worn
+overnight. Daytime data (activities, resting HR, steps) is good throughout.
+
+**Consequence: two databases.** `wearable.duckdb` is built from the fixture and
+remains what the tools, n8n and the eval dataset point at;
+`wearable-real.duckdb` holds the export. The readiness rubric in §8 cannot run on
+the real data, so the demo keeps the fixture as its subject and uses the real
+database for one deliberate beat: point the agent at data with no HRV and let the
+eval harness catch it inventing a readiness call. Bucket A ground truth stays
+pinned to the fixture; `make evals` must not be run against the real database.

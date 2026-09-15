@@ -92,3 +92,26 @@ def test_gap_descriptions_collapse_when_long():
         "no HRV on 11 days between 2026-09-01 and 2026-09-11"
     ]
     assert derived.describe_gaps("HRV", []) == []
+
+
+# --- the zone-4 arm of the hard-session rule (added once the real export showed
+# --- it carries no numeric training effect at all)
+
+@pytest.mark.parametrize(
+    "activity, expected",
+    [
+        ({"hard_minutes": 20.0}, True),
+        ({"hard_minutes": 19.9}, False),
+        ({"hard_minutes": 26.2}, True),
+        ({"hard_minutes": None}, False),
+        # Either arm is sufficient: TE-bearing data still qualifies on its own.
+        ({"aerobic_te": 3.4, "hard_minutes": 0.0}, True),
+        ({"aerobic_te": 1.0, "hard_minutes": 0.0}, False),
+    ],
+)
+def test_zone_minutes_arm_of_the_hard_session_rule(activity, expected):
+    assert derived.is_hard_session(activity) is expected
+
+
+def test_zone_threshold_is_stated_once():
+    assert f">= {derived.HARD_SESSION_ZONE4_MINUTES}" in derived.HARD_SESSION_SQL

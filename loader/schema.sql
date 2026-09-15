@@ -39,8 +39,13 @@ CREATE TABLE IF NOT EXISTS activities (
   aerobic_te DOUBLE, anaerobic_te DOUBLE,    -- Garmin training effect 0-5
   recovery_time_hours INT,
   avg_speed_kmh DOUBLE, elevation_gain_m DOUBLE,
+  hard_minutes DOUBLE,                       -- minutes at or above HR zone 4 (SPEC §6.3)
   source VARCHAR DEFAULT 'garmin', loaded_at TIMESTAMP
 );
+
+-- Added after the real export showed it carries no numeric training effect.
+-- Idempotent, so existing databases pick the column up on the next load.
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS hard_minutes DOUBLE;
 
 CREATE TABLE IF NOT EXISTS user_metrics (
   date DATE, metric VARCHAR, value DOUBLE,   -- metric IN ('vo2max', 'fitness_age')
