@@ -46,18 +46,37 @@ app = FastAPI(
 
 def get_conn() -> duckdb.DuckDBPyConnection:
     if _connection is None:  # pragma: no cover - only if lifespan didn't run
-        raise HTTPException(status_code=503, detail="database not open")
+        raise HTTPException(
+            status_code=503,
+            detail="The database is not open yet. This is a server problem, not a bad "
+                   "request: do not retry this call, and tell the user the data is unavailable.",
+        )
     return _connection.cursor()
 
 
 def _validate_range(start_date: date, end_date: date) -> None:
     if end_date < start_date:
-        raise HTTPException(status_code=422, detail="end_date must not be before start_date")
-    span = (end_date - start_date).days + 1
-    if span > MAX_RANGE_DAYS:
         raise HTTPException(
             status_code=422,
-            detail=f"range of {span} days exceeds the {MAX_RANGE_DAYS}-day cap",
+            detail=(
+                f"end_date ({end_date}) is before start_date ({start_date}). "
+                "Swap them and call again."
+            ),
+        )
+    span = (end_date - start_date).days + 1
+    if span > MAX_RANGE_DAYS:
+        # Error bodies are read by the agent, not a developer, so they name the
+        # limit *and* the corrected call. Without the suggestion the model tends
+        # to retry the identical request (observed in Langfuse, 2026-09-15).
+        earliest = end_date - timedelta(days=MAX_RANGE_DAYS - 1)
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Requested {span} days; the cap is {MAX_RANGE_DAYS} days inclusive of both "
+                f"endpoints. Retry with start_date={earliest.isoformat()} for the widest "
+                f"allowed window ending {end_date.isoformat()}, or split the range across "
+                "several calls."
+            ),
         )
 
 

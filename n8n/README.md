@@ -17,14 +17,45 @@ Chat Trigger ──► Set (as_of_date) ──► AI Agent ──► Respond
                                         └── Tools           (5 × HTTP Request Tool)
 ```
 
-1. **Set** node writes `as_of_date`. Default it to `{{ $now.format('yyyy-MM-dd') }}`;
-   the eval workflow overrides it per case so ground truth stays stable.
-2. **AI Agent** node, Tools Agent type. Paste `prompts/system_v1.md` into the
-   system message for the v1 run, `prompts/system_v2.md` for v2.
+1. **Set** node writes `as_of_date`. Default it to `2026-09-13` — the last day the
+   fixture covers. `{{ $now.format('yyyy-MM-dd') }}` looks more natural and returns
+   empty data from every tool. The eval workflow overrides it per case, which is
+   what keeps ground truth stable.
 
-   For the **Chat Model**, use the **OpenAI Chat Model** node — not the Anthropic
-   node — pointed at the LiteLLM proxy. n8n's AI Agent does not emit Langfuse
-   traces, so every call has to leave through the proxy or it is invisible:
+   **Turn on "Include Other Input Fields".** Without it the Set node emits only
+   `as_of_date` and `chatInput` never reaches the agent, so the agent answers an
+   empty question. This costs an entire debugging session to find, because
+   nothing errors.
+
+2. **AI Agent** node, Tools Agent type.
+
+   Because the Set node sits between the Chat Trigger and the agent, the agent is
+   *not* directly connected to the trigger and cannot find the user message on its
+   own. Set:
+
+   | Field | Value |
+   |---|---|
+   | Prompt source (`promptType`) | **Define below** |
+   | Prompt (User Message) | `={{ $json.chatInput }}` |
+   | Return Intermediate Steps | **on** |
+
+   Return Intermediate Steps is not optional: Phase 5 scores `tool_correct` from
+   those steps, and without them the eval workflow has no record of which tools
+   were called.
+
+   **System Message — switch the field to Expression mode** (hover the field, click
+   the gear, "Add Expression"). Left in Fixed mode, `{{ $json.as_of_date }}` is
+   passed to the model as those literal characters and the agent has no idea what
+   day it is.
+
+   Paste the **prompt body only** from `prompts/system_v1.md` or `system_v2.md` —
+   stop at the horizontal rule. The notes under it describe the failures v1 is
+   expected to make; handing those to the model is telling it the answers to the
+   test.
+
+3. **Chat Model**: use the **OpenAI Chat Model** node — not the Anthropic node —
+   pointed at the LiteLLM proxy. n8n's AI Agent does not emit Langfuse traces, so
+   every call has to leave through the proxy or it is invisible:
 
    | Credential field | Value |
    |---|---|
@@ -38,21 +69,80 @@ Chat Trigger ──► Set (as_of_date) ──► AI Agent ──► Respond
    Models the proxy exposes (see `litellm/config.yaml`): `claude-sonnet-5`,
    `claude-opus-5`, `gpt-5.1`, `gemini-2.5-pro`. Provider keys live only in the
    proxy — n8n holds none.
-3. Five **HTTP Request Tool** nodes, `GET`, "Send Query Parameters" on. The tool
-   *name* must match the dataset's `expected_tool` exactly — that string is what
-   `tool_correct` scores.
 
-| Tool name | URL | Query parameters |
-|---|---|---|
-| `get_daily_metrics` | `http://tools:8000/tools/get_daily_metrics` | `start_date`, `end_date` |
-| `get_sleep` | `http://tools:8000/tools/get_sleep` | `start_date`, `end_date` |
-| `get_hrv_trend` | `http://tools:8000/tools/get_hrv_trend` | `days`, `as_of` |
-| `list_activities` | `http://tools:8000/tools/list_activities` | `start_date`, `end_date`, `type` |
-| `get_readiness_inputs` | `http://tools:8000/tools/get_readiness_inputs` | `date` |
+4. Five **HTTP Request Tool** nodes (`httpRequestTool`), `GET`, "Send Query
+   Parameters" on. **Add them from the AI Agent's Tool socket**, not from its main
+   output — a node wired to the main output is a workflow step, not a tool, and
+   the agent will never call it.
 
-Let the model fill each parameter (`fromAI`), and copy the endpoint's `summary`
-from `http://localhost:8000/docs` into the tool description — the description is
-what the model routes on, so it is a prompt, not documentation.
+   The tool *name* must match the dataset's `expected_tool` exactly; that string
+   is what `tool_correct` scores.
+
+   | Tool name | URL |
+   |---|---|
+   | `get_daily_metrics` | `http://tools:8000/tools/get_daily_metrics` |
+   | `get_sleep` | `http://tools:8000/tools/get_sleep` |
+   | `get_hrv_trend` | `http://tools:8000/tools/get_hrv_trend` |
+   | `list_activities` | `http://tools:8000/tools/list_activities` |
+   | `get_readiness_inputs` | `http://tools:8000/tools/get_readiness_inputs` |
+
+   Copy each endpoint's `summary` from <http://localhost:8000/docs> into the tool
+   description. The description is what the model routes on — it is a prompt, not
+   documentation.
+
+### Parameter expressions
+
+**Do not use the ✨ auto-override button.** It generates
+`$fromAI('parameters0_Value', ``, 'string')` — an unnamed parameter with an empty
+description, which the model has to guess at. Write the three-argument form
+yourself, `$fromAI(name, description, type)`, and leave each parameter's **Name**
+field on **Fixed** (only the Value is an expression).
+
+`get_daily_metrics` and `get_sleep`:
+
+| Name | Value |
+|---|---|
+| `start_date` | `={{ $fromAI('start_date', 'First day of the range, inclusive, as YYYY-MM-DD', 'string') }}` |
+| `end_date` | `={{ $fromAI('end_date', 'Last day of the range, inclusive, as YYYY-MM-DD. Ranges span at most 366 days.', 'string') }}` |
+
+`get_hrv_trend` — note it takes `as_of`, **not** `end_date`, and a day count
+rather than a start date:
+
+| Name | Value |
+|---|---|
+| `days` | `={{ $fromAI('days', 'How many nights back to look, 1 to 366. Use 30 unless the question asks for a different window.', 'number') }}` |
+| `as_of` | `={{ $fromAI('as_of', 'Last night of the window, as YYYY-MM-DD. Use the current as-of date.', 'string') }}` |
+
+`list_activities` — `type` is optional, and an empty string means every type:
+
+| Name | Value |
+|---|---|
+| `start_date` | `={{ $fromAI('start_date', 'First day of the range, inclusive, as YYYY-MM-DD', 'string') }}` |
+| `end_date` | `={{ $fromAI('end_date', 'Last day of the range, inclusive, as YYYY-MM-DD. Ranges span at most 366 days.', 'string') }}` |
+| `type` | `={{ $fromAI('type', 'Optional activity type filter: running, walking, badminton, strength_training, cycling, swimming, yoga, indoor_cardio. Pass an empty string for all types.', 'string') }}` |
+
+`get_readiness_inputs`:
+
+| Name | Value |
+|---|---|
+| `date` | `={{ $fromAI('date', 'The day to assess, as YYYY-MM-DD. Use the current as-of date unless the user names another day.', 'string') }}` |
+
+### Let the tools report their own errors
+
+On **every** tool node: **Add Option → Response → Never Error = on**.
+
+By default n8n converts a non-2xx into a thrown error and hands the model only
+`Request failed with status code 422`. The server's `detail` — which names the
+limit and the corrected call — never reaches it. Observed on 2026-09-15: the
+agent asked for a 366-day range against the old 365-day cap, got a bare 422,
+**re-sent the identical request three times**, then gave up and split the year
+into quarters. Five model calls to recover from one fixable mistake.
+
+With Never Error on, the response body is returned to the model as a normal tool
+result, and it corrects itself on the next turn. This applies to the eval
+workflow's tool nodes too — an eval run that silently burns retries reports
+inflated latency and cost for reasons that have nothing to do with the prompt
+you are testing.
 
 ## workflow_eval
 

@@ -12,8 +12,10 @@ from __future__ import annotations
 from datetime import date, datetime, time, timedelta
 from typing import Any, Iterable, Mapping, Sequence
 
-# Tool contract (SPEC §7).
-MAX_RANGE_DAYS = 365
+# Tool contract (SPEC §7). 366, not 365: ranges are inclusive of both endpoints,
+# so "the past year" ending on the as-of date spans 366 days
+# (2025-09-13..2026-09-13). A 365-day cap rejected every "past year" question.
+MAX_RANGE_DAYS = 366
 
 # Rolling windows (SPEC §6.3).
 RESTING_HR_WINDOW_DAYS = 30

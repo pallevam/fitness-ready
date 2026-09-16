@@ -6,6 +6,8 @@ from datetime import date
 
 import pytest
 
+from tools.derived import MAX_RANGE_DAYS
+
 AS_OF = "2026-09-13"
 
 
@@ -99,7 +101,7 @@ def test_readiness_defaults_to_the_latest_loaded_day(client):
     "params, status",
     [
         ({"start_date": "2026-09-13", "end_date": "2026-09-01"}, 422),  # reversed
-        ({"start_date": "2020-01-01", "end_date": "2026-09-13"}, 422),  # > 365 days
+        ({"start_date": "2020-01-01", "end_date": "2026-09-13"}, 422),  # over the cap
         ({"start_date": "not-a-date", "end_date": "2026-09-13"}, 422),
         ({"start_date": "2026-09-01"}, 422),                            # missing param
     ],
@@ -108,12 +110,53 @@ def test_range_validation(client, params, status):
     assert client.get("/tools/get_daily_metrics", params=params).status_code == status
 
 
-def test_exactly_365_days_is_allowed(client):
-    end = date(2026, 9, 13)
-    start = date(2025, 9, 14)
-    assert (end - start).days + 1 == 365
+def test_a_full_year_inclusive_of_both_ends_is_allowed(client):
+    """"The past year" ending on the as-of date spans 366 days, not 365."""
+    end, start = date(2026, 9, 13), date(2025, 9, 13)
+    assert (end - start).days + 1 == 366 == MAX_RANGE_DAYS
     response = client.get(
         "/tools/get_daily_metrics",
         params={"start_date": start.isoformat(), "end_date": end.isoformat()},
     )
     assert response.status_code == 200
+
+
+def test_one_day_past_the_cap_is_rejected(client):
+    end, start = date(2026, 9, 13), date(2025, 9, 12)
+    assert (end - start).days + 1 == 367
+    response = client.get(
+        "/tools/get_daily_metrics",
+        params={"start_date": start.isoformat(), "end_date": end.isoformat()},
+    )
+    assert response.status_code == 422
+
+
+def test_over_cap_error_tells_the_model_how_to_fix_the_call(client):
+    """The agent reads these bodies; a bare limit makes it retry identically."""
+    detail = client.get(
+        "/tools/get_daily_metrics",
+        params={"start_date": "2020-01-01", "end_date": "2026-09-13"},
+    ).json()["detail"]
+    assert str(MAX_RANGE_DAYS) in detail
+    # Names the corrected call, not just the rule.
+    assert "start_date=2025-09-13" in detail
+    assert "retry" in detail.lower() or "split" in detail.lower()
+
+
+def test_reversed_range_error_names_both_dates(client):
+    detail = client.get(
+        "/tools/get_daily_metrics",
+        params={"start_date": "2026-09-13", "end_date": "2026-09-01"},
+    ).json()["detail"]
+    assert "2026-09-13" in detail and "2026-09-01" in detail
+    assert "swap" in detail.lower()
+
+
+def test_hrv_days_bound_matches_the_range_cap(client):
+    """get_hrv_trend takes `days` directly, so its bound must track MAX_RANGE_DAYS."""
+    assert client.get(
+        "/tools/get_hrv_trend", params={"days": MAX_RANGE_DAYS, "as_of": AS_OF}
+    ).status_code == 200
+    assert client.get(
+        "/tools/get_hrv_trend", params={"days": MAX_RANGE_DAYS + 1, "as_of": AS_OF}
+    ).status_code == 422

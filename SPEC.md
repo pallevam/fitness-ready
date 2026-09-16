@@ -161,7 +161,13 @@ Five named tools, HTTP endpoints, each returning compact JSON. **No free-form SQ
 }
 ```
 
-Date ranges capped at 365 days. Every tool returns `data_gaps` when rows are missing.
+Date ranges are capped at **366 days**, and both endpoints are inclusive — so "the
+past year" ending on the as-of date (2025-09-13..2026-09-13) is 366 days and fits
+exactly. Every tool returns `data_gaps` when rows are missing.
+
+Error bodies are written for the agent, not for a developer: a 4xx `detail` states
+the limit *and* the corrected call to make. An error that only states a rule gets
+retried verbatim.
 
 ## 8. Agent behaviour
 
