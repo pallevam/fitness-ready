@@ -1,0 +1,366 @@
+{
+  "name": "workflow_agent",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -224,
+        16
+      ],
+      "id": "980aad1c-452d-4d31-b4f6-b6bc91a08e4e",
+      "name": "When chat message received",
+      "webhookId": "58bfab99-ed26-4afa-8390-ed2a62c516a0"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "=You are a training and recovery coach. The user wears a Garmin vivoactive 5. You have tools that read their wearable data. Answer their questions and give training advice.\n\nToday is {{ $json.as_of_date }}.\n\nTools\nget_daily_metrics(start_date, end_date) — resting HR, steps, stress, body battery\nget_sleep(start_date, end_date) — nightly sleep stages and score\nget_hrv_trend(days) — nightly HRV with means and the baseline band\nlist_activities(start_date, end_date, type) — logged activities\nget_readiness_inputs(date) — everything above bundled for one day\nUse the tools when you need data. Be helpful and encouraging.",
+          "returnIntermediateSteps": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        256,
+        48
+      ],
+      "id": "833870c8-ccf9-41f3-833d-fce141b31759",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "eb05639d-887f-483c-8403-dfbc1d05777c",
+              "name": "as_of_date",
+              "value": "2026-09-13",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        0,
+        16
+      ],
+      "id": "0e2d8c27-94dc-4e8f-8bba-846768a5bbab",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Every input the readiness rubric needs, for one date: sleep, HRV vs baseline, resting HR delta, last hard session, body battery, and data gaps. Start here for any \"should I train / how am I recovering\" question.",
+        "url": "http://tools:8000/tools/get_readiness_inputs",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "date",
+              "value": "={{ $fromAI('date', 'Date in YYYY-MM-DD format. Use the as-of date from the system prompt unless the user asks about a different day.', 'string') }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        416,
+        256
+      ],
+      "id": "2af7a16c-bd54-40f9-a7c5-6840b8afddc4",
+      "name": "get_readiness_inputs"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Nightly sleep rows for a date range: duration, stages, score, and the validation flag. Each row has trustworthy=true/false; returns data_gaps for missing or untrustworthy nights.",
+        "url": "http://tools:8000/tools/get_sleep",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "start_date",
+              "value": "={{ $fromAI('start_date', 'First night, YYYY-MM-DD', 'string') }}"
+            },
+            {
+              "name": "end_date",
+              "value": "={{ $fromAI('end_date', 'Last night, YYYY-MM-DD. Usually the as-of date from the system prompt.', 'string') }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        640,
+        256
+      ],
+      "id": "b3260307-263c-4c45-b17c-0feee61c12d5",
+      "name": "get_sleep"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Daily wellness rows for a date range: resting HR, min/max HR, steps, intensity minutes, average stress, body battery high/low, active calories. Returns data_gaps for missing days.",
+        "url": "http://tools:8000/tools/get_daily_metrics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "start_date",
+              "value": "={{ $fromAI('start_date', 'First day, YYYY-MM-DD', 'string') }}"
+            },
+            {
+              "name": "end_date",
+              "value": "={{ $fromAI('end_date', 'Last day, YYYY-MM-DD. Usually the as-of date from the system prompt.', 'string') }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        800,
+        240
+      ],
+      "id": "17b748ae-096f-4929-a18a-bc80606a543a",
+      "name": "get_daily_metrics"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Nightly HRV for the last N days up to an as-of date, with 7-day and 60-day means, the baseline band, and whether the latest night is below, within or above it. Returns data_gaps for nights with no reading.",
+        "url": "http://tools:8000/tools/get_hrv_trend",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "days",
+              "value": "={{ $fromAI('days', 'How many nights to look back, 1-365. Use 30 unless the question implies otherwise.', 'number') }}"
+            },
+            {
+              "name": "as_of",
+              "value": "={{ $fromAI('as_of', 'Last night to include, YYYY-MM-DD. Use the as-of date from the system prompt.', 'string') }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        512,
+        352
+      ],
+      "id": "012cc2cb-e278-4890-a6c5-449c0423abda",
+      "name": "get_hrv_trend"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Logged activities in a date range, optionally filtered by type. Each row has duration, distance, HR, training effect, recovery time, and hard_session=true/false; also returns hard_session_count.",
+        "url": "http://tools:8000/tools/list_activities",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "start_date",
+              "value": "={{ $fromAI('start_date', 'First day, YYYY-MM-DD', 'string') }}"
+            },
+            {
+              "name": "end_date",
+              "value": "={{ $fromAI('end_date', 'Last day, YYYY-MM-DD. Usually the as-of date from the system prompt.', 'string') }}"
+            },
+            {
+              "name": "type",
+              "value": "={{ $fromAI('type', 'Optional activity type such as running, walking, cycling, strength_training, badminton. Use an empty string for all types.', 'string') }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        608,
+        448
+      ],
+      "id": "fea8f870-dca9-4cf4-afc5-da1e09242d25",
+      "name": "list_activities"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-sonnet-5",
+          "mode": "list",
+          "cachedResultName": "claude-sonnet-5"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        128,
+        256
+      ],
+      "id": "f180daf1-8c0b-43d2-86f5-163c6c0bbd95",
+      "name": "LiteLLM",
+      "credentials": {
+        "openAiApi": {
+          "id": "AVOi6nxH8xHiRwUr",
+          "name": "OpenAI account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        []
+      ]
+    },
+    "get_readiness_inputs": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_sleep": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_daily_metrics": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_hrv_trend": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "list_activities": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LiteLLM": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f41b4b16-880d-4386-937a-447ac55e9ddd",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5d5c92a3d5e5bfa347f0497a8a9745f6bf11525b7685acdfc5bf54a3c136fe79"
+  },
+  "nodeGroups": [],
+  "id": "W8jXNOrGcd8F7ISe",
+  "tags": []
+}
