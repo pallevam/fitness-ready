@@ -494,7 +494,83 @@ s.addNotes(
 );
 
 // =====================================================================
-// 9 — INTERACTIVE: WHICH ANSWER SCORES HIGHER?
+// 9 — DIAGNOSE FROM THE TRACE (the 422 retry loop)
+// =====================================================================
+s = pres.addSlide();
+kicker(s, "The trace");
+title(s, "The harness says something is wrong");
+
+s.addText("Only the trace says which layer to fix.", {
+  x: L, y: 1.28, w: W, h: 0.36, margin: 0,
+  fontFace: F, fontSize: 15, italic: true, color: MUTED, isTextBox: true,
+});
+
+card(s, L, 1.78, 5.75, 3.55, TINT, { flat: true });
+s.addText("“What was my workout split like in the past one year?”", {
+  x: L + 0.35, y: 1.96, w: 5.05, h: 0.36, margin: 0,
+  fontFace: F, fontSize: 13, bold: true, color: BODY, isTextBox: true,
+});
+s.addText(
+  [
+    { text: "call 1  ", options: { fontFace: M, color: MUTED } },
+    { text: "list_activities → 422\n", options: { fontFace: M, color: AMBER } },
+    { text: "call 2  ", options: { fontFace: M, color: MUTED } },
+    { text: "identical request → 422\n", options: { fontFace: M, color: AMBER } },
+    { text: "call 3  ", options: { fontFace: M, color: MUTED } },
+    { text: "identical request → 422\n", options: { fontFace: M, color: AMBER } },
+    { text: "call 4  ", options: { fontFace: M, color: MUTED } },
+    { text: "splits the year into quarters\n", options: { fontFace: M, color: BODY } },
+    { text: "call 5  ", options: { fontFace: M, color: MUTED } },
+    { text: "answers", options: { fontFace: M, color: MINT } },
+  ],
+  { x: L + 0.35, y: 2.42, w: 5.05, h: 1.55, margin: 0, valign: "top", fontSize: 12, lineSpacing: 18, isTextBox: true }
+);
+s.addText("Five model calls to recover from one fixable mistake.", {
+  x: L + 0.35, y: 4.35, w: 5.05, h: 0.3, margin: 0,
+  fontFace: F, fontSize: 11.5, italic: true, color: MUTED, isTextBox: true,
+});
+card(s, L + 0.35, 4.75, 5.05, 0.4, WHITE, { flat: true });
+s.addText("latency and cost, paid three times over", {
+  x: L + 0.55, y: 4.75, w: 4.65, h: 0.4, margin: 0, valign: "middle",
+  fontFace: F, fontSize: 11, color: AMBER, isTextBox: true,
+});
+
+const causes = [
+  [AMBER, "The range was 366 days", "A year inclusive of both endpoints, against a 365-day cap. An off-by-one in the tool contract — not a model failure."],
+  [RED, "The model could not see why", "n8n's HTTP Request Tool had replaced the body with “Request failed with status code 422”. The server's explanation was thrown away."],
+];
+causes.forEach((c, i) => {
+  const y = 1.78 + i * 1.3;
+  card(s, L + 6.15, y, 5.75, 1.15, WHITE, { line: TINT2 });
+  dot(s, L + 6.45, y + 0.35, 0.42, c[0], String(i + 1));
+  s.addText(c[1], {
+    x: L + 7.05, y: y + 0.16, w: 4.6, h: 0.3, margin: 0,
+    fontFace: F, fontSize: 13, bold: true, color: BODY, isTextBox: true,
+  });
+  s.addText(c[2], {
+    x: L + 7.05, y: y + 0.46, w: 4.6, h: 0.62, margin: 0,
+    fontFace: F, fontSize: 11, color: MUTED, isTextBox: true,
+  });
+});
+card(s, L + 6.15, 4.38, 5.75, 0.95, TINT, { flat: true });
+s.addText("Two fixes, neither of them prompt engineering:\nraise the cap to 366, and turn on Never Error.", {
+  x: L + 6.5, y: 4.52, w: 5.05, h: 0.7, margin: 0,
+  fontFace: F, fontSize: 12, color: BODY, isTextBox: true,
+});
+
+card(s, L, 5.5, W, 1.0, INK, { flat: true });
+s.addText(
+  "Most of what looks like model stupidity is an interface that refuses to say what it wants.",
+  { x: L + 0.4, y: 5.62, w: W - 0.8, h: 0.76, margin: 0, fontFace: H, fontSize: 17, color: WHITE, valign: "middle", isTextBox: true }
+);
+s.addNotes(
+  "Open the real Langfuse trace here — this beat lands from the trace, not the slide.\n\n" +
+  "Walk it in order: 422, then three byte-identical retries, then the recovery. Ask the room what they would change. Most will say the prompt. Neither fix was in the prompt.\n\n" +
+  "This is the honest shape of agent debugging, and it is the reason a harness alone is not enough: the harness tells you something is wrong, the trace tells you which layer owns it."
+);
+
+// =====================================================================
+// 10 — INTERACTIVE: WHICH ANSWER SCORES HIGHER?
 // =====================================================================
 s = pres.addSlide();
 s.background = { color: INK };
@@ -503,12 +579,12 @@ title(s, "Which answer should score higher?", WHITE);
 
 card(s, L, 1.5, 5.75, 3.3, INK2, { flat: true });
 dot(s, L + 0.35, 1.72, 0.44, AMBER, "A");
-s.addText("48 words", {
+s.addText("71 words", {
   x: L + 0.95, y: 1.78, w: 4.4, h: 0.32, margin: 0,
   fontFace: F, fontSize: 12, bold: true, color: AMBER, isTextBox: true,
 });
 s.addText(
-  "“Great question! Your recovery is looking solid overall. HRV has been trending nicely around 52 ms, sleep is averaging a healthy 7h10m, and your body battery is recharging well. You're in good shape — listen to your body, stay hydrated, and you should be set for a strong session tomorrow.”",
+  "“Great question! Your HRV averaged 55.3 this week against a 50–65 baseline, resting HR is 61 versus a 30-day mean of 57.7, and Thursday's badminton left 18 hours of recovery outstanding. You could go hard if you're feeling fresh, keep it easy and reassess in the morning, or take a full rest day. Listen to your body — you'll know which one is right.”",
   { x: L + 0.35, y: 2.28, w: 5.05, h: 2.4, margin: 0, valign: "top", fontFace: F, fontSize: 12.5, color: "C7D8DB", isTextBox: true }
 );
 
@@ -527,7 +603,7 @@ card(s, L, 5.25, W, 1.2, INK2, { flat: true });
 s.addText(
   [
     { text: "The v1 rubric picks A. ", options: { color: AMBER, bold: true } },
-    { text: "Not one of A's numbers appears in the tool results.", options: { color: WHITE } },
+    { text: "Every number in A is real — it just never answers the question.", options: { color: WHITE } },
   ],
   { x: L + 0.4, y: 5.42, w: W - 0.8, h: 0.85, margin: 0, fontFace: H, fontSize: 18, valign: "middle", isTextBox: true }
 );
@@ -535,9 +611,9 @@ s.addNotes(
   "INTERACTIVE BEAT — budget 4 minutes.\n\n" +
   "1. Read both aloud. Do not editorialise.\n" +
   "2. Hands: who says A? Who says B? Count them out loud.\n" +
-  "3. Ask one person who voted A to say why. They will say 'more helpful' or 'more thorough'. That is the whole finding.\n" +
-  "4. Reveal: the v1 judge agrees with the A voters, every time.\n" +
-  "5. Then show the tool results — none of A's numbers are in them. A is fluent and invented.\n\n" +
+  "3. Ask one person who voted A why. They will say 'more helpful', 'more thorough', 'more supportive'. That is the whole finding.\n" +
+  "4. Reveal: the v1 judge agrees with the A voters, every time.\n\n" +
+  "Be precise about WHY A loses, because this is where a lazy version of this talk cheats. A is not made up. Every figure in it is real and verifiable against get_readiness_inputs — that is what v1 actually does. A fails on three criteria: three alternatives instead of one action, no Green/Amber/Red verdict, and no mention that Wednesday's sleep was untrustworthy. It scores 3. B scores 5.\n\n" +
   "Do not skip the hand count. The room has to own the wrong answer before the fix lands."
 );
 
@@ -608,58 +684,82 @@ s.addNotes(
 // =====================================================================
 s = pres.addSlide();
 kicker(s, "The iteration");
-title(s, "Three failures, three changes");
+title(s, "Every change traces to a failure you watched");
 
 const rows = [
-  ["Averaged sleep score across an OFF_WRIST night at 0 minutes and a hand-edited night",
-    "Rule 3 — read trustworthy and data_gaps, and name the uncertainty"],
-  ["“Listen to your body” — plausible, ungrounded, no single action",
-    "The readiness rubric, plus Rule 4 — exactly one action, and name its driver"],
+  ["Asked about tomorrow, answered about today",
+    "The readiness rubric — reason recovery hours against the day in question"],
+  ["Three alternatives, no decision",
+    "Rule 4 — exactly one action, and name its driver"],
+  ["No readiness rating at all",
+    "The rubric's Green / Amber / Red verdict"],
+  ["Never named the untrustworthy night",
+    "Rule 3 — read trustworthy and data_gaps"],
   ["Coached on chest tightness",
-    "Rule 5 — escalate, and give no training guidance at all"],
+    "Rule 5 — escalate, no training guidance at all"],
 ];
-s.addText("OBSERVED IN v1", {
-  x: L + 0.3, y: 1.42, w: 5.2, h: 0.26, margin: 0,
+s.addText("OBSERVED IN THE v1 RUN", {
+  x: L + 0.3, y: 1.4, w: 5.2, h: 0.26, margin: 0,
   fontFace: F, fontSize: 9.5, bold: true, charSpacing: 1.2, color: AMBER, isTextBox: true,
 });
 s.addText("CHANGED IN v2", {
-  x: L + 6.45, y: 1.42, w: 5.2, h: 0.26, margin: 0,
+  x: L + 6.45, y: 1.4, w: 5.2, h: 0.26, margin: 0,
   fontFace: F, fontSize: 9.5, bold: true, charSpacing: 1.2, color: MINT, isTextBox: true,
 });
 rows.forEach((r, i) => {
-  const y = 1.78 + i * 1.12;
-  card(s, L, y, 5.75, 0.98, TINT, { flat: true });
+  const y = 1.72 + i * 0.7;
+  card(s, L, y, 5.75, 0.6, TINT, { flat: true });
   s.addText(r[0], {
-    x: L + 0.3, y: y + 0.08, w: 5.15, h: 0.82, margin: 0, valign: "middle",
-    fontFace: F, fontSize: 12.5, color: BODY, isTextBox: true,
+    x: L + 0.3, y, w: 5.15, h: 0.6, margin: 0, valign: "middle",
+    fontFace: F, fontSize: 11.5, color: BODY, isTextBox: true,
   });
   s.addShape(pres.ShapeType.rightArrow, {
-    x: L + 5.87, y: y + 0.41, w: 0.28, h: 0.15, fill: { color: MINT }, line: { color: MINT, width: 0 },
+    x: L + 5.87, y: y + 0.23, w: 0.26, h: 0.14, fill: { color: MINT }, line: { color: MINT, width: 0 },
   });
-  card(s, L + 6.15, y, 5.75, 0.98, WHITE, { line: TINT2 });
+  card(s, L + 6.15, y, 5.75, 0.6, WHITE, { line: TINT2 });
   s.addText(r[1], {
-    x: L + 6.45, y: y + 0.08, w: 5.15, h: 0.82, margin: 0, valign: "middle",
-    fontFace: F, fontSize: 12.5, color: BODY, isTextBox: true,
+    x: L + 6.45, y, w: 5.15, h: 0.6, margin: 0, valign: "middle",
+    fontFace: F, fontSize: 11.5, color: BODY, isTextBox: true,
   });
 });
 
-card(s, L, 5.3, W, 1.15, INK, { flat: true });
+// The sixth failure sat in the same list and was not a prompt problem at all.
+const y6 = 1.72 + 5 * 0.7;
+card(s, L, y6, 5.75, 0.6, TINT2, { flat: true });
+s.addText("Retried a 422 three times", {
+  x: L + 0.3, y: y6, w: 5.15, h: 0.6, margin: 0, valign: "middle",
+  fontFace: F, fontSize: 11.5, bold: true, color: BODY, isTextBox: true,
+});
+s.addShape(pres.ShapeType.rightArrow, {
+  x: L + 5.87, y: y6 + 0.23, w: 0.26, h: 0.14, fill: { color: AMBER }, line: { color: AMBER, width: 0 },
+});
+card(s, L + 6.15, y6, 5.75, 0.6, WHITE, { line: AMBER });
+s.addText(
+  [
+    { text: "Not a prompt change at all", options: { bold: true, color: AMBER } },
+    { text: " — the tool cap, and Never Error", options: { color: BODY } },
+  ],
+  { x: L + 6.45, y: y6, w: 5.15, h: 0.6, margin: 0, valign: "middle", fontFace: F, fontSize: 11.5, isTextBox: true }
+);
+
+card(s, L, 6.05, W, 0.95, INK, { flat: true });
 const cells = ["tool_correct", "value_match", "judge_score", "escalated", "cost / run", "p50 latency"];
 cells.forEach((c, i) => {
   const x = L + 0.35 + i * 1.94;
   s.addText(c, {
-    x, y: 5.45, w: 1.85, h: 0.28, margin: 0,
-    fontFace: F, fontSize: 10.5, color: "9FB8BD", isTextBox: true,
+    x, y: 6.16, w: 1.85, h: 0.26, margin: 0,
+    fontFace: F, fontSize: 10, color: "9FB8BD", isTextBox: true,
   });
   s.addText("v1 → v2", {
-    x, y: 5.75, w: 1.85, h: 0.36, margin: 0,
-    fontFace: M, fontSize: 14, bold: true, color: MINT, isTextBox: true,
+    x, y: 6.44, w: 1.85, h: 0.34, margin: 0,
+    fontFace: M, fontSize: 13, bold: true, color: MINT, isTextBox: true,
   });
 });
 s.addNotes(
   "FILL THE BOTTOM STRIP with the real numbers from your v1 and v2 runs before presenting — replace each 'v1 → v2' with the actual pair.\n\n" +
-  "Every change traces to a case that failed. That is the whole point: no change enters the prompt because it sounded wise.\n\n" +
-  "Say the cost line out loud: v2's prompt is longer and calls one more tool. Improvement is not free, and an EM is the person who has to sign off on that trade."
+  "Row 1 detail worth saying out loud: 18 of those recovery hours will have elapsed by tomorrow morning, which is exactly what changes the call. Every number v1 gave was right; it answered a different question.\n\n" +
+  "Dwell on the last row. It sat in the same failure list as the other five, and the fix was not in the prompt at all. An eval harness tells you SOMETHING is wrong; only the trace tells you WHICH LAYER to fix.\n\n" +
+  "Say the cost line out loud: v2's prompt is longer and calls one more tool. Improvement is not free, and an EM is the person who signs off on that trade."
 );
 
 // =====================================================================
@@ -672,27 +772,30 @@ title(s, "What did not move, and why");
 const nots = [
   ["Bucket A barely budges",
     "It was already passing. Prompt work does not fix retrieval that already works — and if bucket A ever does move, suspect the loader, not the prompt."],
+  ["Grounding never improved, because it was never broken",
+    "Had I written this deck from assumptions instead of from traces, “stop making up numbers” would have been the headline fix — and it would have moved nothing."],
   ["Judged scores rise, then plateau near 4",
     "What is left are the cases where the honest answer is “the data cannot tell you that.” The rubric rewards it. Models resist it."],
   ["Thirty cases give direction, not significance",
-    "One point of judge score across twelve cases is noise. Treat the harness as a compass, and be suspicious of anyone who reports it to two decimal places."],
+    "One point of judge score across twelve cases is noise. Treat the harness as a compass, and distrust anyone reporting it to two decimals."],
 ];
 nots.forEach((n, i) => {
-  const y = 1.5 + i * 1.5;
-  card(s, L, y, W, 1.3, i === 2 ? TINT2 : TINT, { flat: true });
-  dot(s, L + 0.35, y + 0.4, 0.5, i === 2 ? RED : AMBER, String(i + 1));
+  const y = 1.45 + i * 1.28;
+  card(s, L, y, W, 1.12, i === 3 ? TINT2 : TINT, { flat: true });
+  dot(s, L + 0.35, y + 0.31, 0.5, i === 3 ? RED : (i === 1 ? MINT : AMBER), String(i + 1));
   s.addText(n[0], {
-    x: L + 1.05, y: y + 0.18, w: 10.5, h: 0.34, margin: 0,
-    fontFace: F, fontSize: 14.5, bold: true, color: BODY, isTextBox: true,
+    x: L + 1.05, y: y + 0.14, w: 10.5, h: 0.34, margin: 0,
+    fontFace: F, fontSize: 14, bold: true, color: BODY, isTextBox: true,
   });
   s.addText(n[1], {
-    x: L + 1.05, y: y + 0.55, w: 10.5, h: 0.62, margin: 0,
+    x: L + 1.05, y: y + 0.48, w: 10.5, h: 0.58, margin: 0,
     fontFace: F, fontSize: 12.5, color: MUTED, isTextBox: true,
   });
 });
-caption(s, "Say this part out loud. An eval deck that only shows wins is a sales deck.", 6.15);
+caption(s, "Say this part out loud. An eval deck that only shows wins is a sales deck.", 6.65);
 s.addNotes(
-  "Do not rush this slide to get to the close. For an EM audience this is the credibility slide — it is the difference between someone who has run an eval loop and someone who has read about one.\n\n" +
+  "Do not rush this slide to get to the close. For an EM audience this is the credibility slide — the difference between someone who has run an eval loop and someone who has read about one.\n\n" +
+  "Item 2 is the one to land hardest, and it is a confession: the first draft of this talk assumed v1 would hallucinate numbers. It did not. Modern models with well-described tools ground their figures. The failures that survive good grounding are the ones you would never catch by reading answers — which is the entire argument for a harness.\n\n" +
   "If you are short on time, this is the slide to keep and the 'finetuning scope' slide to drop."
 );
 
