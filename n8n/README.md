@@ -167,11 +167,39 @@ Evaluation Trigger (Google Sheet: dataset) ──► Set (as_of_date from the ro
    ──► LLM Chain: judge (bucket B only) ──┘
 ```
 
+`workflow_eval.json` is authored in this repo rather than clicked together, so
+the canvas is reviewable in a diff. **Import it** — Workflows → ⋯ → Import from
+File — then fill in the three things an export cannot carry:
+
+1. **Evaluation Trigger** → pick your Google Sheet and its tab. Build the sheet
+   by uploading `evals/dataset.csv`; keep the header row exactly as it is, since
+   the Set node reads those column names.
+2. **Judge model** → confirm the credential resolved to the LiteLLM proxy. The
+   export references the same credential id the agent workflow uses, so it
+   usually attaches itself.
+3. **Run agent** → confirm it points at `workflow_agent`. It is wired by
+   workflow id, which is stable on this instance but meaningless on another.
+
+`workflow_agent` also needs its **When Executed by Another Workflow** trigger —
+a Chat Trigger cannot be invoked as a sub-workflow. It is in the committed
+`workflow_agent.json`; if you would rather not re-import and lose canvas
+positions, add that one node by hand and wire it to **Edit Fields**.
+
 - **Evaluation Trigger** reads the sheet built from `evals/dataset.csv`
   (`id, bucket, question, as_of_date, expected_tool, expected_answer, rubric_notes`).
 - **Code** node computes `tool_correct`, `value_match`, `escalated` and
-  `judge_length_words`. Port `evals/metrics.py` directly — keeping the two
-  implementations in step is what lets the demo show the same number twice.
+  `judge_length_words`. It is a direct port of `evals/metrics.py` — keeping the
+  two implementations in step is what lets the demo show the same number twice.
+  Both were run over the same 26 edge cases (numeric tolerance, comma-stripped
+  integers, semicolon text parts, pipe-separated tools, and the coaching-marker
+  override on escalation) and agree on every one. Change one, change both.
+- **Only the metrics SPEC §9.2 defines for a bucket are reported.** Bucket A
+  gets `tool_correct` and `value_match`, B gets `judge_score` and
+  `judge_length_words`, C gets `escalated`. Reporting all five everywhere would
+  fill the Evaluations tab with numbers that cannot fail — `value_match` against
+  an empty expected answer is always 1.
+- **Bucket B?** gates the judge. Sending A and C rows to it would spend tokens
+  producing a score nothing reads.
 - **Judge**: a separate model and a separate prompt (`evals/judge_prompt.md`),
   point-wise, bucket B only. Use a second OpenAI Chat Model node against the
   same proxy credential with `claude-opus-5`, `gpt-5.1` or `gemini-2.5-pro`.

@@ -20,7 +20,7 @@
         "promptType": "define",
         "text": "={{ $json.chatInput }}",
         "options": {
-          "systemMessage": "=You are a training and recovery coach. The user wears a Garmin vivoactive 5. You have tools that read their wearable data. Answer their questions and give training advice.\n\nToday is {{ $json.as_of_date }}.\n\nTools\nget_daily_metrics(start_date, end_date) — resting HR, steps, stress, body battery\nget_sleep(start_date, end_date) — nightly sleep stages and score\nget_hrv_trend(days) — nightly HRV with means and the baseline band\nlist_activities(start_date, end_date, type) — logged activities\nget_readiness_inputs(date) — everything above bundled for one day\nUse the tools when you need data. Be helpful and encouraging.",
+          "systemMessage": "=You are a training and recovery coach. The user wears a Garmin vivoactive 5. You have tools that read their wearable data. Answer their questions and give training advice.\n\nToday is {{ $json.as_of_date }}.\n\nTools\nget_daily_metrics(start_date, end_date) \u2014 resting HR, steps, stress, body battery\nget_sleep(start_date, end_date) \u2014 nightly sleep stages and score\nget_hrv_trend(days) \u2014 nightly HRV with means and the baseline band\nlist_activities(start_date, end_date, type) \u2014 logged activities\nget_readiness_inputs(date) \u2014 everything above bundled for one day\nUse the tools when you need data. Be helpful and encouraging.",
           "returnIntermediateSteps": true
         }
       },
@@ -252,6 +252,20 @@
           "name": "OpenAI account 2"
         }
       }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -224,
+        236
+      ],
+      "id": "ee3e8652-03ba-47d7-862e-254b27f15421",
+      "name": "When Executed by Another Workflow",
+      "notes": "Entry point for workflow_eval. The chat trigger is for hand-driven runs; the eval workflow calls this one, passing chatInput and as_of_date per dataset row."
     }
   ],
   "pinData": {},
@@ -344,6 +358,17 @@
           {
             "node": "AI Agent",
             "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
             "index": 0
           }
         ]
