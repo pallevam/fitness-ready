@@ -396,9 +396,10 @@ unusable for the demo:
 2. **Sleep and HRV exist.** The HRV baseline band `[50, 65]` is consistent with
    the 13 ONBOARDING samples the account does have (46–68) and with a resting HR
    in the high 50s.
-3. **Training effect and recovery hours are present**, which the export omits but
-   the Connect API supplies. The fixture therefore models the export *plus* the
-   API — the merged view we expect once the pull runs.
+3. **Training effect and recovery hours are present**, which the real account
+   has in neither source: the export omits them, and the Connect API returns
+   `null` for both on this device (confirmed by the stage 2 pull, below). The
+   fixture keeps them so the training-effect arm of §6.3 stays exercised.
 
 Short sleep (5.7 h mean) was kept rather than idealised: inventing eight-hour
 nights would make every readiness call green and the demo pointless. The pinned
@@ -407,3 +408,55 @@ is +3.3, and 18 hours of recovery are outstanding from a hard badminton session.
 
 The eval set moved with it: `A08` now asks about badminton minutes rather than
 running kilometres, and `A09`'s answer is `strength_training`.
+
+### Fetcher stage 2: the Connect API pull (17 Sep 2026)
+
+`make pull` fetches a date range (default: the last 30 days) and `make load-api`
+loads it into `wearable-real.duckdb` — never the fixture database. Under
+`raw/api/`, `api-responses/<endpoint>/<day>.json` keeps each response exactly as
+sent, and `garmin-api-<table>/` holds what `fetcher/normalise.py` made of it.
+Discovery classifies the second tree by directory and ignores the first. Records
+are rebuilt from the saved responses on every run, so a normaliser fix reaches
+history without calling Garmin. A day already on disk is not fetched again
+except the two most recent (sleep and HRV finalise late) or with `--force`; a
+failed call is logged, left missing, and retried next run. Activities are one
+ranged call, split back into per-day files.
+
+**Same keys, different units.** One run, read from both sources:
+
+| Key | Export | API | Factor |
+|---|---|---|---|
+| `duration`, `elapsedDuration` | 3 604 806.9 ms | 3 604.8 s | 1000 |
+| `distance` | 715 665 cm | 7 156.6 m | 100 |
+| `elevationGain` | 5 192.4 cm | 51.9 m | 100 |
+| `hrTimeInZone_n` | 1 161 675 ms | 1 161.7 s | 1000 |
+| `avgSpeed` / `averageSpeed` | 0.1985 | 1.985 m/s | 10 |
+| `calories` | 2 593.6 kJ | 619 kcal | 4.184, truncated |
+
+The normaliser therefore never forwards a unit-bearing value under a shared
+name: it builds each record from an allow-list and emits `durationSeconds`,
+`distanceMeters`, `averageSpeedMps`, `elevationGainMeters`, `activeKilocalories`
+and a precomputed `hardMinutes`. A test loads the same synthetic activity from
+both shapes and asserts identical rows.
+
+**Two export bugs the comparison exposed**, both now fixed:
+
+- The export's `avgSpeed` is decametres per second, not cm/s. The old converter
+  stored that 7.16 km run at 0.01 km/h; `damps_to_kmh` gives 7.15. The fixture
+  now writes the same unit.
+- Garmin truncates kJ → kcal (619.89 → 619, 373.54 → 373); the loader rounded.
+  It now truncates, with a 0.01 margin so a value rounded from whole kcal stays
+  on its integer.
+
+**Measurement-less sleep is skipped at load**, for both sources. Garmin emits a
+sleep record for every unworn night with all durations and the score null; the
+loader stored those with validation `UNKNOWN`, which the §6.3 trust rule accepts.
+38 of 70 real sleep rows were such nights. They are now data gaps, and the real
+database holds 32 nights, the latest 2026-03-02.
+
+**The API does not rescue the readiness rubric.** Over 2026-08-19 → 2026-09-17
+it returned daily summaries, 4 new activities, VO2 max and fitness age, but no
+HRV on any night, no scored sleep, and null training effect and recovery on
+every activity. `hard_minutes` still works, since zone times are present. The
+real database remains unable to support §8's rubric; the fixture stays the demo
+subject.

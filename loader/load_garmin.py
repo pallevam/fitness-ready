@@ -148,6 +148,8 @@ def _derive_activities(row: dict[str, Any], record: dict[str, Any]) -> dict[str,
     return row
 
 
+SLEEP_MEASURES = ("total_min", "deep_min", "light_min", "rem_min", "sleep_score")
+
 DERIVERS = {"daily": _derive_daily, "sleep": _derive_sleep, "activities": _derive_activities}
 
 
@@ -162,6 +164,11 @@ def rows_from_record(table: str, record: dict[str, Any]) -> tuple[list[dict[str,
     if derive:
         row = derive(row, flat)
     if any(row.get(key) is None for key in PRIMARY_KEY[table]):
+        return [], unmapped
+    if table == "sleep" and all(row.get(key) is None for key in SLEEP_MEASURES):
+        # Garmin emits a record for nights the watch was not worn, with every
+        # measurement null. Loaded, it would read as a present, trustworthy night
+        # (validation UNKNOWN); skipped, it stays a visible data gap.
         return [], unmapped
     return [row], unmapped
 
@@ -255,7 +262,7 @@ def main() -> int:
         for table in TABLE_COLUMNS:
             count = conn.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
             skipped = stats.skipped.get(table, 0)
-            note = f"  ({skipped} records skipped: no primary key)" if skipped else ""
+            note = f"  ({skipped} records skipped: no key or no measurements)" if skipped else ""
             print(f"  {table:<13} {count:>6} rows{note}")
     return 0
 

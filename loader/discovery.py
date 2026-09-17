@@ -22,8 +22,16 @@ FILE_PATTERNS: dict[str, tuple[str, ...]] = {
     "user_metrics": (r"metricsmaxmet", r"metricsfitnessage", r"vo2", r"fitnessage"),
 }
 
+# Normalised Connect API records (fetcher.pull) live in one directory per table,
+# so their table is stated rather than guessed from a filename.
+API_RECORDS_PATTERN = r"(?:^|/)garmin-api-(daily|sleep|hrv|activities|user_metrics)/"
+
 # Files we deliberately ignore in Phase 1 (SPEC §6.1).
 IGNORE_PATTERNS: tuple[str, ...] = (
+    # Unmodified API responses are kept for reference only. Their keys collide
+    # with the export's in different units, so only the normalised copies load.
+    r"(?:^|/)api-responses/",
+    r"(?:^|/)api_samples",
     r"uploadedfiles.*\.zip$",
     r"\.fit$",
     r"\.gpx$",
@@ -50,6 +58,9 @@ def classify(path: Path, root: Path) -> str | None:
     key = _rel(path, root).lower()
     if any(re.search(p, key) for p in IGNORE_PATTERNS):
         return None
+    api = re.search(API_RECORDS_PATTERN, key)
+    if api:
+        return api.group(1)
     for table, patterns in FILE_PATTERNS.items():
         if any(re.search(p, key) for p in patterns):
             return table

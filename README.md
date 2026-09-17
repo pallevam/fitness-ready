@@ -59,6 +59,20 @@ WEARABLE_DB=wearable-real.duckdb make serve   # point the tools at real data
 4. `python -m evals.ground_truth --write` — bucket A answers are derived from
    the database, never hand-typed.
 
+### Or via the Connect API
+
+```bash
+pip install -e ".[api]"
+make probe DATE=2026-09-16   # one day of raw responses, to inspect field names
+make load-api                # pull the last 30 days, load into wearable-real.duckdb
+make pull START=2026-06-01 END=2026-09-16   # a specific range (at most 366 days)
+```
+
+The first login asks for your Garmin password (and an MFA code, if enabled) in
+the terminal; later runs reuse the token cached in `~/.garminconnect`. Re-running
+is cheap: only days not yet on disk, plus the last two, are fetched. API and
+export data for the same day or activity converge on the same row.
+
 `raw/` and `*.duckdb` are gitignored. This is personal health data; keep it that
 way.
 

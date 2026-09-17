@@ -197,7 +197,8 @@ def _make_activity(
         "aerobicTrainingEffect": aerobic_te,
         "anaerobicTrainingEffect": anaerobic_te,
         "activityRecoveryHours": recovery_hours,
-        "avgSpeed": int(profile.speed_kmh / 0.036) if profile.speed_kmh else 0,
+        # The export stores speed in decametres per second: km/h / 36 (fieldmap.damps_to_kmh).
+        "avgSpeed": round(profile.speed_kmh / 36.0, 4) if profile.speed_kmh else 0,
         "elevationGain": int(rng.uniform(0, 9000)) if sport in ("running", "cycling") else 0,
         **{f"hrTimeInZone_{index}": float(value) for index, value in enumerate(zones)},
         "deviceId": 3_494_295_084,

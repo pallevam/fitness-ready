@@ -33,7 +33,7 @@ def test_units_are_converted(export_root: Path):
     (row,), _ = rows_from_record("activities", raw)
     assert row["duration_min"] == pytest.approx(raw["duration"] / 60_000, abs=0.01)
     assert row["distance_km"] == pytest.approx(raw["distance"] / 100_000, abs=0.01)
-    assert row["avg_speed_kmh"] == pytest.approx(raw["avgSpeed"] * 0.036, abs=0.02)
+    assert row["avg_speed_kmh"] == pytest.approx(raw["avgSpeed"] * 36, abs=0.02)
 
 
 def test_intensity_minutes_counts_vigorous_double(export_root: Path):
@@ -215,3 +215,21 @@ def test_api_kilocalories_win_over_the_export_field():
         "activeKilocalories": 869,
     })
     assert row["calories"] == 869
+
+
+def test_a_sleep_record_with_no_measurements_is_skipped():
+    """An unworn night is a gap, not a trustworthy row with validation UNKNOWN."""
+    rows, _ = rows_from_record("sleep", {
+        "calendarDate": "2026-08-27", "sleepTimeSeconds": None, "deepSleepSeconds": None,
+        "sleepWindowConfirmationType": None, "retro": False,
+    })
+    assert rows == []
+
+
+def test_a_zero_length_sleep_record_is_kept():
+    """Zero minutes is a measurement; the trust rule, not the loader, rejects it."""
+    rows, _ = rows_from_record("sleep", {
+        "calendarDate": "2026-08-28", "sleepTimeSeconds": 0,
+        "sleepWindowConfirmationType": "OFF_WRIST",
+    })
+    assert rows and rows[0]["total_min"] == 0
