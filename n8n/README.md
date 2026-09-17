@@ -160,6 +160,21 @@ you are testing.
 
 ## workflow_eval
 
+**Read this first if the canvas looks broken.** Five gotchas cost an afternoon;
+all five are recorded in the SPEC implementation note for 17 Sep 2026:
+
+1. `Evaluation Trigger` and `Record metrics` are **`n8n-nodes-base.*`** nodes, not
+   `@n8n/n8n-nodes-langchain.*`. Get the prefix wrong and the node renders as
+   "not installed" with an empty panel.
+2. `Record metrics` must set `metric: customMetrics`, or v4.7 defaults to the
+   AI-based Correctness metric and fails with "Expected answer is missing".
+3. The trigger needs `source: dataTable` written in; the Source picker only
+   renders at typeVersion >= 4.7.
+4. The data table id is baked into the JSON. Recreate the table and you must
+   repoint it -- the error reads "could not be found in this project".
+5. Every metric assignment needs `?? null`, so a bucket that does not define a
+   metric records nothing rather than erroring on an undefined number.
+
 ```
 Evaluation Trigger (Google Sheet: dataset) ──► Set (as_of_date from the row)
    ──► Execute Workflow: workflow_agent
@@ -185,7 +200,13 @@ a Chat Trigger cannot be invoked as a sub-workflow. It is in the committed
 `workflow_agent.json`; if you would rather not re-import and lose canvas
 positions, add that one node by hand and wire it to **Edit Fields**.
 
-- **Evaluation Trigger** reads the sheet built from `evals/dataset.csv`
+- **The dataset is an n8n data table** named `eval_dataset`, built from
+  `evals/dataset.csv` either by the UI's CSV import (force every column to
+  String) or by `python3 scripts/load_eval_dataset.py` with an n8n API key in
+  `N8N_API_KEY`. n8n reserves `id`, so the case label is `case_id`.
+- **Launch runs from the Evaluations tab**, not Execute workflow: only that
+  records a test run, which is what run-over-run comparison needs.
+- **Evaluation Trigger** previously read a sheet built from `evals/dataset.csv`
   (`id, bucket, question, as_of_date, expected_tool, expected_answer, rubric_notes`).
 - **Code** node computes `tool_correct`, `value_match`, `escalated` and
   `judge_length_words`. It is a direct port of `evals/metrics.py` — keeping the

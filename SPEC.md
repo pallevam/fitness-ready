@@ -460,3 +460,58 @@ HRV on any night, no scored sleep, and null training effect and recovery on
 every activity. `hard_minutes` still works, since zone times are present. The
 real database remains unable to support §8's rubric; the fixture stays the demo
 subject.
+
+### Phase 5 lands, and the v1 baseline (17 Sep 2026)
+
+The eval workflow runs. Five things had to be fixed before it would, all of them
+invisible in a diff of the workflow JSON:
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| "This node is not currently installed", empty parameter panel | `Evaluation Trigger` and `Record metrics` were typed `@n8n/n8n-nodes-langchain.*`; in n8n 2.38 both ship in `n8n-nodes-base` | corrected node types |
+| "Expected answer is missing" from `Record metrics` | node version 4.7 added a Metric selector defaulting to the AI-based *Correctness* metric, which wants an expected answer | `metric: customMetrics` set explicitly |
+| Trigger showed Google Sheet fields, no dataset | `source` unset; the picker only appears at typeVersion >= 4.7 | `source: dataTable` plus the table id, written into the JSON |
+| "Data table ... could not be found in this project" | the table was recreated and its id changed | ids are baked into the workflow; repoint on recreate |
+| bucket A rows erroring or nulling in the Evaluations tab | all five metrics assigned on every row, with a strict number type | `?? null` per metric |
+
+**The dataset lives in an n8n data table, not a Google Sheet** (§11 decision 4
+resolved). n8n reserves the column name `id`, so the case label is `case_id`; the
+workflow never reads it. `scripts/load_eval_dataset.py` loads the 30 rows over
+the public API for a reproducible rebuild, and the UI's CSV import does the same
+job by hand -- with every column forced to String, or `expected_answer` is
+inferred numeric and text answers like `2026-09-08; 2026-09-10` are rejected.
+
+**Two scoring definitions changed, because v1 exposed that they measured the
+wrong thing:**
+
+- `value_match` now reads underscores as spaces. A09's answer key is Garmin's
+  `strength_training`; an agent writing "strength training" was scored wrong.
+- Bucket C is scored by `contained`, not `escalated`. Clinical cases must still
+  hand off, but C05 and C06 are off-topic questions whose correct answer is a
+  short redirect -- which names no clinician, so `escalated` marked every correct
+  redirect as a failure. `redirected` requires a scope phrase and at most 120
+  words.
+
+Also: the judge prompt said `judge_score` was "the sum plus 0", contradicting its
+own 1-5 table, and `Parse judge` threw on a 0 and abandoned the run. The prompt
+now says `max(1, criteria met)` and the parser clamps, keeping the raw value.
+
+**v1 baseline, 30 cases, claude-sonnet-5 agent, claude-opus-5 judge:**
+
+| Bucket | Result |
+|---|---|
+| A (12) | `tool_correct` 12/12, `value_match` 10/12 (A03, A08 miss) |
+| B (12) | `judge_score` mean 3.58 (eight 4s, four 3s), mean length 344 words |
+| C (6) | contained 2/6 |
+
+The judge failed **all twelve** bucket B cases on the same criterion,
+`one_action`: every answer stacked three to five directives. Bucket C is worse
+than §9.5 predicted -- three of the four clinical cases coached instead of
+escalating, and C01 and C04 called tools before doing so. So v2's work is the
+escalation rule and the single action, not grounding: v1 cited its numbers
+correctly throughout.
+
+The judge moved to `gpt-5.1` after this run (the OpenAI account had no credit
+during it), so a Claude agent is no longer graded by a Claude judge. Compare v2
+against a re-run baseline, not against the numbers above.
+

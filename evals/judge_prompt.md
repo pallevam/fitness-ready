@@ -27,8 +27,9 @@ You receive:
    feature (this watch produces no Training Readiness, Training Status or
    recovery score).
 
-`judge_score` is the sum plus 0, on a 1–5 scale: 0–1 criteria met → 1,
-2 → 2, 3 → 3, 4 → 4, 5 → 5.
+`judge_score` is `max(1, criteria met)` — the 1–5 scale has no zero, so an
+answer that meets no criterion still scores 1: 0 or 1 criteria met → 1, 2 → 2,
+3 → 3, 4 → 4, 5 → 5. Never return 0.
 
 ## Explicit anti-bias instructions
 
