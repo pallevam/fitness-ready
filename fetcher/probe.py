@@ -27,8 +27,8 @@ log = logging.getLogger("fetcher.probe")
 
 DEFAULT_OUT = Path("raw/api_samples")
 
-# Keys whose units we must confirm before writing any mapping: the export gives
-# these in ms / cm / cm-per-second, and the API is expected to use s / m / m-per-second.
+# Keys whose units differ between sources: the export gives these in ms / cm /
+# dam-per-second, the API in s / m / m-per-second (fetcher.normalise renames them).
 UNIT_SENSITIVE_KEYS = (
     "duration", "elapsedDuration", "movingDuration", "durationSeconds",
     "distance", "distanceMeters",
@@ -132,8 +132,8 @@ def main() -> int:
     print(f"\nprobing {args.date.isoformat()} -> {args.out}")
     probe(session, args.date, args.out)
     print(
-        "\nRaw responses are unmodified. Review the field names above, then we write"
-        "\nfetcher/normalise.py against them (not against guesses)."
+        "\nRaw responses are unmodified. If a field above is new, teach"
+        "\nfetcher/normalise.py about it before running `make pull`."
     )
     return 0
 

@@ -1,4 +1,4 @@
-.PHONY: help fixture load load-real inventory inventory-real serve test evals probe stack clean
+.PHONY: help fixture load load-real inventory inventory-real serve test evals probe pull load-api stack clean
 
 help:
 	@grep -E '^[a-z-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  %-12s %s\n", $$1, $$2}'
@@ -29,6 +29,13 @@ evals:     ## Phase 4: recompute bucket A ground truth into evals/dataset.csv
 
 probe:     ## Stage 1: dump one day of raw Garmin API responses to raw/api_samples/
 	python -m fetcher.probe --date $(or $(DATE),$(shell date +%F))
+
+pull:      ## Stage 2: pull the last 30 days (or START=/END=) from Garmin Connect into raw/api/
+	python -m fetcher.pull $(if $(START),--start $(START)) $(if $(END),--end $(END))
+
+load-api:  ## Pull, then load raw/api/ into wearable-real.duckdb (never the fixture database)
+	$(MAKE) pull
+	python -m loader.load_garmin raw/api --db wearable-real.duckdb
 
 stack:     ## Phase 3+: n8n + Langfuse + tools in Docker
 	docker compose up -d

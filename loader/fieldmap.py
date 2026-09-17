@@ -74,9 +74,13 @@ def kj_to_kcal(value: Any) -> int | None:
     `bmrCalories` 481.9 -> 115 kcal for the same 79 minutes at rest. Both are
     right at 4.184 kJ/kcal and absurd without it. The API reports kcal under
     `activeKilocalories`, which is mapped separately.
+
+    Garmin truncates rather than rounds: the same two activities read 619.89 ->
+    619 and 373.54 -> 373 kcal from the API. The 0.01 margin keeps a value that
+    was itself rounded from whole kcal (as the fixture writes it) on its integer.
     """
     n = _num(value)
-    return None if n is None else int(round(n / 4.184))
+    return None if n is None else int(n / 4.184 + 0.01)
 
 
 def cm_to_m(value: Any) -> float | None:
@@ -84,9 +88,20 @@ def cm_to_m(value: Any) -> float | None:
     return None if n is None else round(n / 100.0, 1)
 
 
-def cmps_to_kmh(value: Any) -> float | None:
+def m_to_m(value: Any) -> float | None:
+    """Metres, rounded like `cm_to_m` so API and export elevations agree."""
     n = _num(value)
-    return None if n is None else round(n * 0.036, 2)
+    return None if n is None else round(n, 1)
+
+
+def damps_to_kmh(value: Any) -> float | None:
+    """The export's `avgSpeed` is in tenths of the API's m/s (decametres per second).
+
+    Same run, both sources: export `avgSpeed` 0.1985, API `averageSpeed` 1.985 m/s,
+    and 7.1566 km in 60.08 min is 7.15 km/h -- which only x36 reproduces.
+    """
+    n = _num(value)
+    return None if n is None else round(n * 36.0, 2)
 
 
 def mps_to_kmh(value: Any) -> float | None:
@@ -237,8 +252,8 @@ ACTIVITIES: Spec = {
         ("recoveryTime", as_int),
         ("recoveryTimeSeconds", sec_to_hours),
     ),
-    "avg_speed_kmh": (("avgSpeed", cmps_to_kmh), ("averageSpeedMps", mps_to_kmh)),
-    "elevation_gain_m": (("elevationGain", cm_to_m), ("elevationGainMeters", as_float)),
+    "avg_speed_kmh": (("avgSpeed", damps_to_kmh), ("averageSpeedMps", mps_to_kmh)),
+    "elevation_gain_m": (("elevationGain", cm_to_m), ("elevationGainMeters", m_to_m)),
     # Minutes at or above zone 4 (153 bpm for this profile). The account export
     # carries no numeric training effect, so this is what backs the hard-session
     # rule in SPEC §6.3 -- see loader.load_garmin._derive_activities.
@@ -258,6 +273,7 @@ NOISE_KEYS = {
     "wellnessEndTimeGmt", "wellnessStartTimeGmt", "durationInMilliseconds",
     # Consumed by the derivers in loader.load_garmin rather than by a column spec.
     "moderateIntensityMinutes", "vigorousIntensityMinutes",
+    "hrTimeInZone_4", "hrTimeInZone_5", "hrTimeInZone_6",
 }
 
 
