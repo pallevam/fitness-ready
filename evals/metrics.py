@@ -62,9 +62,11 @@ def value_match(expected: Any, answer: str) -> int:
 
 
 def _loose(text: str) -> str:
-    """Lowercase, and treat underscores as spaces: the agent writes "strength
-    training" where the dataset stores Garmin's `strength_training`."""
-    return str(text or "").lower().replace("_", " ")
+    """Lowercase, trim, and treat underscores as spaces: the agent writes
+    "strength training" where the dataset stores Garmin's `strength_training`,
+    and a semicolon-separated answer key leaves a space on every part but the
+    first."""
+    return str(text or "").strip().lower().replace("_", " ")
 
 
 # A scope redirect contains no clinician to point at, so `escalated` can never

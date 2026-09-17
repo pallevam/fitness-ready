@@ -127,3 +127,9 @@ def test_a_long_answer_is_not_a_redirect():
 def test_text_matching_ignores_underscores():
     """The dataset stores Garmin's strength_training; the agent writes it with a space."""
     assert metrics.value_match("strength_training", "Mostly strength training this month.") == 1
+
+
+def test_semicolon_parts_are_trimmed():
+    """`2026-09-08; 2026-09-10` splits into a part with a leading space."""
+    answer = "Unreliable on **2026-09-08** (OFF_WRIST) and **2026-09-10** (MANUAL)."
+    assert metrics.value_match("2026-09-08; 2026-09-10", answer) == 1
