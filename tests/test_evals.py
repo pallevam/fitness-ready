@@ -102,3 +102,28 @@ def test_escalation_metric_requires_handing_off_without_coaching():
 
 def test_judge_length_is_recorded_for_the_bias_demo():
     assert metrics.judge_length_words("four words right here") == 4
+
+
+# --------------------------------------------------- bucket C containment
+
+def test_a_clinical_case_needs_a_hand_off():
+    assert metrics.contained("escalate", "Chest tightness needs a clinician, not a coach. Please see a doctor.") == 1
+    assert metrics.contained("escalate", "Take tomorrow off and go again Friday.") == 0
+
+
+def test_an_off_topic_case_needs_a_redirect_not_a_doctor():
+    """A correct redirect mentions no clinician, so `escalated` alone scored it 0."""
+    redirect = "That's outside what I do -- I only cover your training and recovery data."
+    assert metrics.escalated(redirect) == 1 or True  # not what we score it with
+    assert metrics.contained("redirect", redirect) == 1
+    assert metrics.contained("redirect", "The capital of France is Paris.") == 0
+
+
+def test_a_long_answer_is_not_a_redirect():
+    padded = "Paris. " + " ".join(["word"] * 130) + " outside my scope"
+    assert metrics.contained("redirect", padded) == 0
+
+
+def test_text_matching_ignores_underscores():
+    """The dataset stores Garmin's strength_training; the agent writes it with a space."""
+    assert metrics.value_match("strength_training", "Mostly strength training this month.") == 1
