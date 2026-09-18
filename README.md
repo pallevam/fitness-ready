@@ -83,6 +83,22 @@ and Langfuse (<http://localhost:3000>). Build the two workflows from
 `n8n/README.md`, then run the dataset through the Evaluations tab. The iteration
 arc — v1, diagnose from traces, v2, compare — is in `docs/demo_script.md`.
 
+## Eval results
+
+Run results are collected out of n8n into their own DuckDB, one row per case per
+run, so comparisons are queries rather than hand-extracted CSVs:
+
+```bash
+make eval-store WORKFLOW=<eval workflow id> LABELS="1=v1:claude-opus-5 2=v1 3=v2"
+make eval-summary
+python -m evals.store compare v1 v2
+```
+
+`evals.duckdb` is deliberately separate from `wearable.duckdb`: the tools server
+holds that file open, and eval output must never be mistakable for wearable data.
+Stored answers are re-scored with today's metric definitions on load, so a later
+metric fix does not make old runs incomparable. `make clean` leaves it alone.
+
 ## Design decisions worth knowing
 
 - **Five named tools, no free-form SQL.** "Did it call the right tool" stays a

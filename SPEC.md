@@ -548,3 +548,33 @@ semicolon-separated answer key without trimming, so `"2026-09-08; 2026-09-10"`
 required a literal leading space on the second date and A03 could never pass.
 Both runs were re-scored after the fix, so the comparison above is consistent.
 
+### Eval results live in DuckDB too (18 Sep 2026)
+
+`evals.duckdb` holds `eval_runs` (one row per run: prompt version, agent and
+judge model, case count, timestamp) and `eval_cases` (one row per case: the
+question, the answer, tools called, every metric, and latency). `python -m
+evals.store collect` reads them from n8n's own SQLite -- the authoritative record
+-- and groups cases into runs by clock gap, since consecutive cases are seconds
+apart and runs are minutes apart.
+
+Three decisions worth keeping:
+
+- **A separate database.** `wearable.duckdb` is held open by the tools
+  container, and eval output must never be mistakable for wearable data or able
+  to skew bucket A's answer key. `make clean` drops the wearable databases and
+  leaves this one, because it is history rather than derived data.
+- **Answers are re-scored on load** with the current definitions in
+  `evals/metrics.py`. The canvas scored each run with whatever the metric said at
+  the time, so the semicolon-trim fix would otherwise have made the v1 and v2
+  runs incomparable.
+- **`evals/flatted.py` exists because the obvious parser is wrong.** n8n stores
+  execution data in the `flatted` format, where every string inside a container
+  is an index into a pool and numbers are inline. Resolving a string and then
+  resolving the result again turns an `expected_answer` of "5" into whatever
+  object sits at position 5 -- corruption that reads as real data, and it did
+  produce a wrong comparison table before being caught.
+
+The three stored runs also quantify the agent's non-determinism, which is now a
+query rather than an anecdote: across the two v1 runs, C03 escalated in one and
+coached in the other, and clinical-case tool calls went 3 then 7.
+
