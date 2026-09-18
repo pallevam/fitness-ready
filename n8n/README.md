@@ -230,6 +230,19 @@ positions, add that one node by hand and wire it to **Edit Fields**.
 - **Evaluation** node (Set Metrics) records everything in SPEC §9.3. Latency and
   token cost come from Langfuse, not from n8n.
 
+## Switching prompts on stage
+
+```bash
+python3 scripts/set_prompt.py --show   # which prompt is live
+python3 scripts/set_prompt.py v1       # the naive baseline
+python3 scripts/set_prompt.py v2       # the fixed prompt
+```
+
+It patches the AI Agent node's `systemMessage` in place, so tools, credentials
+and `returnIntermediateSteps` survive, and it strips the repo notes under each
+prompt (they name the failures the demo wants to happen). **Reload the n8n tab
+after switching** — an open tab will save the old prompt back over it.
+
 ## Langfuse
 
 Sign in at <http://localhost:3000>, create a project, and put the keys in `.env`
