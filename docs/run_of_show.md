@@ -324,16 +324,18 @@ saying "Red" and "the +3 threshold":
 > of the prompt and into the tool."
 
 Then the numbers. Same 30 cases, same tools, same `claude-sonnet-5` agent, same
-`gpt-5.1` judge on the v2 rubric — only the system message changed:
+`gpt-5.1` judge on the v2 rubric — only the system message changed. **Each prompt
+was run twice**, 17 Sep and 20 Sep, and both runs are shown:
 
-| Metric | v1 | v2 |
+| Metric | v1, two runs | v2, two runs |
 |---|---|---|
-| `tool_correct` | 12/12 | 12/12 |
-| `value_match` | 10/12 | **12/12** |
-| `judge_score` mean | 3.67 | **4.00** |
-| Answer length, bucket B | 344 words | **151 words** |
-| Bucket C contained | 1/6 | **6/6** |
-| Tool calls on the 4 clinical cases | 7 | **0** |
+| `tool_correct` | 12/12 · 12/12 | 12/12 · 12/12 |
+| `value_match` | 10/12 · 10/12 | **12/12 · 12/12** |
+| `judge_score` mean | 3.67 · 3.42 | **4.00 · 4.25** |
+| Answer length, bucket B | 344 · 333 words | **151 · 141 words** |
+| Bucket C contained | 1/6 · 2/6 | **6/6 · 6/6** |
+| Tool calls on the 4 clinical cases | 7 · 7 | **0 · 0** |
+| Latency, mean | 15.0s · 13.1s | **9.6s · 8.2s** |
 
 Two beats worth slowing down for:
 
@@ -365,10 +367,11 @@ Be specific. An eval talk that only shows wins is a sales deck.
 - **The judge rubric is part of the result.** Re-graded with the calibrated
   rubric, these cases move v1 *up* and v2 *down*. Nothing about the agent changed;
   the instrument did. Quote a score with its rubric version attached.
-- **Nothing here is statistically significant.** Twelve cases per bucket, one run
-  each, a non-deterministic agent — bucket C came out 1/6 in one v1 run and 2/6
-  in another. Two runs is not an experiment; you'd run each three times and report
-  the spread.
+- **Still not statistically significant** — twelve cases per bucket, two runs per
+  prompt. But the spread is now measured rather than hand-waved: **v1's judge mean
+  lands in [3.42, 3.67] and v2's in [4.00, 4.25]**, and the two ranges do not
+  overlap. Individual cases swing hard either way: re-running v1 moved B08 from 3
+  to 5 and B09 from 5 to 3. **The right unit to report is a range, not a point.**
 
 Close on the loop, not the agent:
 

@@ -43,14 +43,17 @@ python3 scripts/set_prompt.py v2      # fallback route only; reload the tab afte
 
 ## The numbers you quote
 
+Two runs per prompt (17 Sep · 20 Sep). Quote **ranges**.
+
 | Metric | v1 | v2 |
 |---|---|---|
-| `tool_correct` | 12/12 | 12/12 |
-| `value_match` | 10/12 | **12/12** |
-| `judge_score` mean | 3.67 | **4.00** |
-| Words, bucket B | 344 | **151** |
-| Bucket C contained | 1/6 | **6/6** |
-| Tool calls, 4 clinical cases | 7 | **0** |
+| `tool_correct` | 12/12 · 12/12 | 12/12 · 12/12 |
+| `value_match` | 10/12 · 10/12 | **12/12 · 12/12** |
+| `judge_score` mean | 3.67 · 3.42 | **4.00 · 4.25** |
+| Words, bucket B | 344 · 333 | **151 · 141** |
+| Bucket C contained | 1/6 · 2/6 | **6/6 · 6/6** |
+| Tool calls, 4 clinical | 7 · 7 | **0 · 0** |
+| Latency mean | 15.0s · 13.1s | **9.6s · 8.2s** |
 
 Judge vs human: **34/60 = 57%, κ 0.24** → recalibrated **37/60 = 62%, κ 0.32**.
 Grading was mine, with ChatGPT's help. **Say that.**
@@ -62,6 +65,8 @@ Grading was mine, with ChatGPT's help. **Say that.**
 2. **B11 got worse**, 3 → 2. Bucket A didn't move. Grounding was never broken.
 3. Re-graded with the calibrated rubric, **v1 goes up and v2 goes down**. The
    instrument is part of the result. Quote the rubric version with the score.
+4. The judge mean moves ~0.25 between **identical** runs — that is why I ran each
+   twice and quote ranges. v1 [3.42, 3.67], v2 [4.00, 4.25]; they don't overlap.
 
 ## If it breaks
 

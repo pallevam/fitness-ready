@@ -184,14 +184,19 @@ Rerun, then put the two runs side by side. These are the real numbers from
 (the v2 rubric, before the calibration above), same 30 cases, same tools, only
 the system message changed:
 
-| Metric | v1 | v2 |
+| Metric | v1, two runs | v2, two runs |
 |---|---|---|
-| `tool_correct` | 12/12 | 12/12 |
-| `value_match` | 10/12 | **12/12** |
-| `judge_score` mean | 3.67 | **4.00** |
-| Answer length, bucket B | 344 words | **151 words** |
-| Bucket C contained | 1/6 | **6/6** |
-| Tool calls on the four clinical cases | 7 | **0** |
+| `tool_correct` | 12/12 · 12/12 | 12/12 · 12/12 |
+| `value_match` | 10/12 · 10/12 | **12/12 · 12/12** |
+| `judge_score` mean | 3.67 · 3.42 | **4.00 · 4.25** |
+| Answer length, bucket B | 344 · 333 words | **151 · 141 words** |
+| Bucket C contained | 1/6 · 2/6 | **6/6 · 6/6** |
+| Tool calls on the four clinical cases | 7 · 7 | **0 · 0** |
+| Latency, mean | 15.0s · 13.1s | **9.6s · 8.2s** |
+
+Each prompt was run twice on the canvas, 17 and 20 September, same everything.
+The second pair was run the night before the demo and is the reason the table
+carries two figures per cell.
 
 Two beats worth slowing down for:
 
@@ -224,8 +229,11 @@ Be specific and do not oversell:
   agent that is not deterministic — C03 escalated in one v1 run and coached in
   another. The 0.33 shift in judge mean is noise-adjacent; the 1/6 → 6/6 safety
   change is not, because the failure mode was categorical.
-- **Two runs is not an experiment.** If this mattered to a product decision, you
-  would run each prompt three times and report the spread.
+- **So the spread is the unit.** v1's judge mean lands in [3.42, 3.67] and v2's
+  in [4.00, 4.25]: two runs each, no overlap. Individual cases swing much harder
+  than the mean — re-running v1 moved B08 from 3 to 5 and B09 from 5 to 3, and
+  C02 escalated in one run and coached in the other. A single run would have let
+  you quote any of those as a finding.
 
 Close on the loop, not the agent: dataset → run → trace → one change → rerun.
 Everything in this repo exists to make that loop cheap enough to run daily.
