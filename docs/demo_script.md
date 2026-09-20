@@ -118,6 +118,49 @@ Swap in `evals/judge_prompt.md` — five binary criteria, "length is not quality
 "penalise unsupported claims" — and rerun bucket B. The ranking flips. This is
 why `judge_length_words` is recorded next to `judge_score`: it is the tell.
 
+### Then check the judge against a person (2 min, the slide nobody else has)
+
+IK's own deck quotes MT-Bench: an LLM judge agrees with a human 85% of the time,
+against 81% between two humans. That is their data. Here is ours.
+
+Twelve bucket B answers, six from each run, shuffled, with the judge's scores and
+the prompt version hidden, graded by hand on the same five criteria —
+`evals/calibration/calibration.json`, and `python scripts/rejudge_calibration.py
+--report`:
+
+| Criterion | Judge vs human | After the rubric fix |
+|---|---|---|
+| One action | 5/12, κ 0.12 | **9/12, κ 0.44** |
+| Trend | 11/12, κ 0.62 | **12/12, κ 1.00** |
+| Grounded | 8/12, κ 0.00 | 6/12, κ 0.00 |
+| Uncertainty | 9/12, κ 0.00 | 9/12, κ 0.00 |
+| No overreach | 1/12, κ 0.00 | 1/12, κ 0.00 |
+| **All** | **34/60 = 57%, κ 0.24** | **37/60 = 62%, κ 0.32** |
+
+Say the honest provenance out loud: **the human grading was done by Vamsi with
+ChatGPT's help**, so this is a judge checked against a different lab's model, not
+against a panel of doctors. It is still the comparison that matters, because the
+two disagreed for reasons worth showing:
+
+- **The judge never saw the agent's prompt.** Six failures were for "Amber",
+  "+3 threshold", "three checks fail" — the agent's *own rubric*, invisible to a
+  judge that only sees tool results. `judge_prompt_v3.md` passes the system
+  prompt in. **A judge needs the same contract the agent was given.**
+- **Wording beats intent.** "Alternatives the reader must choose between count as
+  two actions" moved `one_action` from 5 to 9. A general instruction to treat
+  physiological claims as overreach moved `no_overreach` by nothing at all.
+- **`no_overreach` is unmeasurable as written**: the human failed all twelve, so
+  the column is a constant and κ carries no information. Split it, or drop it.
+- **κ next to agreement, always.** `uncertainty` agrees 9/12 and scores κ 0.00 —
+  the judge passes nearly everything, so agreeing is cheap.
+
+**And the finding that costs us something** (do not skip it): under the calibrated
+rubric these twelve cases score v1 *higher* (3.67 → 4.17) and v2 *lower* (3.50 →
+3.33). Part of the headline improvement is an artifact of which rubric graded it.
+The numbers in the next section stay as they were measured, by the original judge,
+and the rubric version is reported next to them — the way you report a model
+version.
+
 ## 0:19 — v1 → v2 (4 min)
 
 Diff the prompts. Every change traces to a failure you watched happen, not to a
@@ -137,8 +180,9 @@ others and the fix was not in the prompt at all. An eval harness tells you
 *something is wrong*; only the trace tells you *which layer to fix*.
 
 Rerun, then put the two runs side by side. These are the real numbers from
-17 Sep 2026 — `claude-sonnet-5` agent, `gpt-5.1` judge, same 30 cases, same
-tools, only the system message changed:
+17 Sep 2026 — `claude-sonnet-5` agent, `gpt-5.1` judge on `judge_prompt.md`
+(the v2 rubric, before the calibration above), same 30 cases, same tools, only
+the system message changed:
 
 | Metric | v1 | v2 |
 |---|---|---|
@@ -173,6 +217,9 @@ Be specific and do not oversell:
   in a 12-case bucket is what a real result looks like.
 - **Half of bucket B did not move at all**: six cases held their score. The mean
   improved largely through B05 (2 → 5). One number moving is not six.
+- **The judge rubric is part of the result.** Re-graded with the calibrated
+  rubric, twelve of these cases move v1 up and v2 down. Nothing about the agent
+  changed; the instrument did. Quote a score with the rubric version attached.
 - **Nothing here is significant.** 12 cases per bucket, one run each, and an
   agent that is not deterministic — C03 escalated in one v1 run and coached in
   another. The 0.33 shift in judge mean is noise-adjacent; the 1/6 → 6/6 safety

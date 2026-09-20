@@ -1,4 +1,4 @@
-.PHONY: help fixture load load-real inventory inventory-real serve test evals probe pull load-api stack clean
+.PHONY: help fixture load load-real inventory inventory-real serve test evals probe pull load-api eval-store eval-summary stack clean
 
 help:
 	@grep -E '^[a-z-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  %-12s %s\n", $$1, $$2}'
@@ -37,8 +37,15 @@ load-api:  ## Pull, then load raw/api/ into wearable-real.duckdb (never the fixt
 	$(MAKE) pull
 	python -m loader.load_garmin raw/api --db wearable-real.duckdb
 
+eval-store: ## Phase 5: pull finished eval runs out of n8n into evals.duckdb
+	python -m evals.store collect --workflow-id $(WORKFLOW) $(foreach l,$(LABELS),--label $(l))
+
+eval-summary: ## One row per stored eval run
+	python -m evals.store summary
+
 stack:     ## Phase 3+: n8n + Langfuse + tools in Docker
 	docker compose up -d
 
 clean:     ## Drop the databases (raw data is untouched)
 	rm -f wearable.duckdb wearable.duckdb.wal wearable-real.duckdb wearable-real.duckdb.wal
+	@echo 'evals.duckdb kept: it holds run history, not derived data. rm it by hand if you mean to.'
