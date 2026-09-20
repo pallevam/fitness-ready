@@ -68,6 +68,11 @@ Grading was mine, with ChatGPT's help. **Say that.**
 4. The judge mean moves ~0.25 between **identical** runs — that is why I ran each
    twice and quote ranges. v1 [3.42, 3.67], v2 [4.00, 4.25]; they don't overlap.
 
+## Deeper detail
+
+`docs/live_walkthrough.md` — click-by-click for every node in both workflows,
+the Langfuse trace anatomy, and the 422 forensics.
+
 ## If it breaks
 
 Stored answers: `docs/fallback_answers.md`. Runs: Evaluations tab.

@@ -6,9 +6,13 @@ with LLMs and APIs, have seen a chatbot built, have never built an eval harness
 
 The agent is the specimen. **The evaluation loop is the lesson.**
 
-Everything here runs on the machine in front of you. `docs/demo_script.md` is the
-long-form version with the reasoning behind each beat; this file is what you keep
-open on the second screen.
+Everything here runs on the machine in front of you. Three files, one job each:
+
+- **this file** — the 30-minute arc and the timings, on the second screen;
+- **`docs/live_walkthrough.md`** — click by click, node by node: which node to
+  open, what to point at, what to say. Use it while rehearsing, and keep it open
+  if you would rather drive the demo from the detail than from the clock;
+- **`docs/demo_script.md`** — the reasoning behind each beat, for questions.
 
 ---
 
