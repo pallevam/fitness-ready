@@ -230,6 +230,41 @@ positions, add that one node by hand and wire it to **Edit Fields**.
 - **Evaluation** node (Set Metrics) records everything in SPEC §9.3. Latency and
   token cost come from Langfuse, not from n8n.
 
+## Recorded evaluation runs (the Evaluations tab)
+
+`Execute workflow` runs the dataset but records nothing: n8n's `test_run` and
+`test_case_execution` tables stay empty and the Evaluations tab shows no history.
+A *recorded* run is a different code path, found in the installed source
+(`dist/evaluation.ee/`):
+
+```
+POST /rest/workflows/:workflowId/eval-collections/:collectionId/runs   # start a run
+POST /rest/workflows/:workflowId/eval-collections/:collectionId/rerun  # repeat one
+POST /rest/workflows/:workflowId/evaluation-configs                    # create the config
+```
+
+So a run needs an **evaluation config** and a **collection** first, which is why
+`evaluation_config` and `evaluation_collection` being empty means the tab has
+nothing to offer. A config carries `datasetSource`, `datasetRef`,
+`startNodeName` and `endNodeName` — the dataset plus which part of the workflow
+is under test.
+
+Two facts worth knowing before you try:
+
+- **A data table is required.** The config validator rejects the other source
+  with "Google Sheets datasets are accepted by the schema but not yet runnable"
+  in this version (2.38.7). `eval_dataset` is already a data table, so this is
+  fine — but it means the Google Sheet route in SPEC §11 could not have worked.
+- **The metrics come from the `Record metrics` node**, so the columns in the tab
+  are whatever that node assigns. Ours assigns all five with a `?? null`
+  fallback, so a bucket that does not define a metric stores null rather than
+  failing the case.
+
+Set it up on the workflow's **Evaluations** tab: create the evaluation, choose
+`eval_dataset` as the dataset and the Evaluation Trigger as the start node, then
+run it from there. Confirm the field labels as you go — the routes above are from
+the source, the UI wording is not.
+
 ## Switching prompts on stage
 
 ```bash

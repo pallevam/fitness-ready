@@ -10,6 +10,7 @@ import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import duckdb
 import pytest
 
 from evals import flatted, store
@@ -106,10 +107,11 @@ def test_runs_are_split_on_a_clock_gap():
 
 # -------------------------------------------------------------------- store
 
-def _write(tmp_path: Path, run_id: str, version: str, cases: list[store.CaseResult]) -> None:
+def _write(tmp_path: Path, run_id: str, version: str, cases: list[store.CaseResult],
+           harness: str = "canvas") -> None:
     with store.connect(tmp_path / "evals.duckdb") as conn:
         store.write_run(conn, run_id, cases, prompt_version=version, agent_model="claude-sonnet-5",
-                        judge_model="gpt-5.1", workflow_id="W1",
+                        judge_model="gpt-5.1", workflow_id="W1", harness=harness,
                         expected={"A03": "2026-09-08; 2026-09-10", "C01": "escalate"})
 
 
@@ -152,6 +154,42 @@ def test_summary_reports_one_row_per_run(tmp_path):
     by_run = {r[columns.index("run_id")]: r for r in rows}
     assert by_run["v1-x"][columns.index("contained")] == 0
     assert by_run["v2-x"][columns.index("contained")] == 1
+
+
+def test_a_run_is_canvas_unless_it_says_otherwise(tmp_path):
+    """The default matters: every run stored before `run_local.py` was clicked."""
+    _write(tmp_path, "v1-x", "v1", [_case("A01", "A", "57.8 bpm")])
+    _write(tmp_path, "v1-local-x", "v1", [_case("A01", "A", "57.8 bpm")], harness="local")
+    with store.connect(tmp_path / "evals.duckdb", read_only=True) as conn:
+        assert dict(conn.execute("SELECT run_id, harness FROM eval_runs").fetchall()) == {
+            "v1-x": "canvas", "v1-local-x": "local"}
+
+
+def test_the_summary_names_the_harness_so_the_two_are_never_conflated(tmp_path):
+    _write(tmp_path, "v1-x", "v1", [_case("A01", "A", "57.8 bpm")])
+    _write(tmp_path, "v1-local-x", "v1", [_case("A01", "A", "57.8 bpm")], harness="local")
+    with store.connect(tmp_path / "evals.duckdb", read_only=True) as conn:
+        columns = [d[0] for d in conn.execute(store.SUMMARY_SQL).description]
+        rows = conn.execute(store.SUMMARY_SQL).fetchall()
+    assert "harness" in columns
+    by_run = {r[columns.index("run_id")]: r[columns.index("harness")] for r in rows}
+    assert by_run == {"v1-x": "canvas", "v1-local-x": "local"}
+
+
+def test_an_older_database_gains_the_harness_column_as_canvas(tmp_path):
+    """The migration path: a pre-`harness` eval_runs table, opened writable."""
+    path = tmp_path / "evals.duckdb"
+    conn = duckdb.connect(str(path))
+    conn.execute("""
+        CREATE TABLE eval_runs (run_id VARCHAR PRIMARY KEY, ran_at TIMESTAMP,
+          prompt_version VARCHAR, agent_model VARCHAR, judge_model VARCHAR, cases INT,
+          workflow_id VARCHAR, loaded_at TIMESTAMP)
+    """)
+    conn.execute("INSERT INTO eval_runs VALUES ('v1-2026-09-17T22:30', now(), 'v1', 'a', 'j', 30, 'W1', now())")
+    conn.close()
+
+    with store.connect(path) as migrated:
+        assert migrated.execute("SELECT harness FROM eval_runs").fetchone()[0] == "canvas"
 
 
 def test_reading_an_n8n_sqlite_copy(tmp_path):

@@ -45,7 +45,8 @@ CREATE TABLE IF NOT EXISTS eval_runs (
   judge_model VARCHAR,
   cases INT,
   workflow_id VARCHAR,
-  loaded_at TIMESTAMP
+  loaded_at TIMESTAMP,
+  harness VARCHAR DEFAULT 'canvas' -- canvas (clicked in n8n) | local (evals.run_local)
 );
 
 CREATE TABLE IF NOT EXISTS eval_cases (
@@ -83,7 +84,31 @@ def connect(path: str | os.PathLike[str] | None = None, *, read_only: bool = Fal
     conn = duckdb.connect(str(target), read_only=read_only)
     if not read_only:
         conn.execute(SCHEMA)
+        migrate(conn)
     return conn
+
+
+def migrate(conn) -> None:
+    """Bring an older `evals.duckdb` up to the current schema.
+
+    `harness` arrived with `evals/run_local.py`. Every run stored before it was
+    clicked on the n8n canvas, so 'canvas' is the right default -- but the column
+    has to exist for the summary to print it, and a local run must never be
+    silently compared against a canvas one.
+    """
+    columns = {row[1] for row in conn.execute("PRAGMA table_info('eval_runs')").fetchall()}
+    if "harness" not in columns:
+        conn.execute("ALTER TABLE eval_runs ADD COLUMN harness VARCHAR DEFAULT 'canvas'")
+    conn.execute("UPDATE eval_runs SET harness = 'canvas' WHERE harness IS NULL")
+
+
+def ensure_schema(path: str | os.PathLike[str] | None = None) -> None:
+    """Open the database writable just long enough to run migrations, then close.
+
+    The reporting commands read read-only, which cannot add a column.
+    """
+    with connect(path) as conn:
+        conn.commit()
 
 
 # ----------------------------------------------------------------- collecting
@@ -221,13 +246,13 @@ def rescore(case: CaseResult, expected: dict[str, str]) -> dict[str, Any]:
 
 def write_run(conn, run_id: str, cases: list[CaseResult], *, prompt_version: str,
               agent_model: str, judge_model: str, workflow_id: str,
-              expected: dict[str, str]) -> int:
+              expected: dict[str, str], harness: str = "canvas") -> int:
     conn.execute("DELETE FROM eval_cases WHERE run_id = ?", [run_id])
     conn.execute("DELETE FROM eval_runs WHERE run_id = ?", [run_id])
     conn.execute(
-        "INSERT INTO eval_runs VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO eval_runs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [run_id, min(c.ran_at for c in cases), prompt_version, agent_model, judge_model,
-         len(cases), workflow_id, datetime.now()],
+         len(cases), workflow_id, datetime.now(), harness],
     )
     rows = []
     for case in cases:
@@ -255,7 +280,7 @@ def dataset_expected(path: Path | None = None) -> dict[str, str]:
 # ---------------------------------------------------------------- reporting
 
 SUMMARY_SQL = """
-SELECT r.run_id, r.ran_at, r.prompt_version AS prompt, r.judge_model AS judge, r.cases,
+SELECT r.run_id, r.ran_at, r.prompt_version AS prompt, r.harness, r.judge_model AS judge, r.cases,
        count(*) FILTER (c.bucket = 'A' AND c.tool_correct = 1) AS tool_ok,
        count(*) FILTER (c.bucket = 'A' AND c.value_match = 1) AS value_ok,
        round(avg(c.judge_score) FILTER (c.bucket = 'B'), 2) AS judge_mean,
@@ -320,19 +345,23 @@ def main() -> int:
         return 0
 
     if args.command == "summary":
+        ensure_schema(args.db)
         with connect(args.db, read_only=True) as conn:
             _print(conn.execute(SUMMARY_SQL))
         return 0
 
+    ensure_schema(args.db)
     with connect(args.db, read_only=True) as conn:
         rows = conn.execute(
             """
             WITH sides AS (
               SELECT CASE WHEN r.run_id = ? OR r.prompt_version = ? THEN 'left'
-                          WHEN r.run_id = ? OR r.prompt_version = ? THEN 'right' END AS side, c.*
+                          WHEN r.run_id = ? OR r.prompt_version = ? THEN 'right' END AS side,
+                     r.harness AS harness, c.*
               FROM eval_runs r JOIN eval_cases c USING (run_id)
             )
             SELECT side, count(DISTINCT run_id) AS runs,
+                   string_agg(DISTINCT harness, '+') AS harness,
                    count(*) FILTER (bucket = 'A' AND tool_correct = 1) AS tool_ok,
                    count(*) FILTER (bucket = 'A' AND value_match = 1) AS value_ok,
                    round(avg(judge_score) FILTER (bucket = 'B'), 2) AS judge_mean,
