@@ -19,7 +19,7 @@ trace tells you *which layer* is wrong. Most agent failures are not the model.
 | 0:12 | Dataset, 3 buckets, Evaluations tab | dataset.csv, Evaluations |
 | 0:15 | **422 retry**, execution 12 + "which layer would you fix?" | n8n execution 12 |
 | 0:18 | Judge bias → calibration, 57% / κ 0.24 | judge prompts, terminal |
-| 0:23 | Switch to v2 live, re-ask, then the table | terminal + canvas |
+| 0:23 | Switch to v2 in **Edit Fields** (save!), re-ask, then the table | canvas |
 | 0:27 | What didn't move. Close on the loop. | nothing |
 
 ---
@@ -31,7 +31,8 @@ python3 scripts/set_prompt.py --show                                   # expect 
 curl -s 'localhost:8000/tools/get_readiness_inputs?date=2026-09-13' | jq
 curl -s 'localhost:8000/tools/list_activities?start_date=2025-09-12&end_date=2026-09-13' | jq -r .detail
 python3 scripts/rejudge_calibration.py --report
-python3 scripts/set_prompt.py v2                                       # then RELOAD the n8n tab
+# switch v1 -> v2 on the canvas: Edit Fields node -> prompt_version -> save (⌘S)
+python3 scripts/set_prompt.py v2      # fallback route only; reload the tab after
 ```
 
 ## The questions, verbatim

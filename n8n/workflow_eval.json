@@ -1,5 +1,11 @@
 {
+  "updatedAt": "2026-09-17T22:24:36.911Z",
+  "createdAt": "2026-09-17T20:29:22.107Z",
+  "id": "YEYBnwxncT226ATP",
   "name": "workflow_eval",
+  "description": null,
+  "active": false,
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {
@@ -236,7 +242,6 @@
       "notes": "SPEC \u00a79.3. latency_ms, input_tokens, output_tokens and cost_usd are not set here -- they come from Langfuse, which sees the model calls this canvas does not."
     }
   ],
-  "pinData": {},
   "connections": {
     "Evaluation Trigger": {
       "main": [
@@ -334,14 +339,43 @@
       ]
     }
   },
-  "active": false,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "fccc4572-2599-4f51-a20b-49a647f32c95",
+  "staticData": null,
   "meta": {
     "templateCredsSetupCompleted": true
   },
-  "id": "YEYBnwxncT226ATP",
-  "tags": []
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "58fb30e6-c352-4fb5-b5ab-c2fdb534ae36",
+  "activeVersionId": null,
+  "versionCounter": 11,
+  "triggerCount": 0,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-09-17T20:29:22.109Z",
+      "createdAt": "2026-09-17T20:29:22.109Z",
+      "role": "workflow:owner",
+      "workflowId": "YEYBnwxncT226ATP",
+      "projectId": "4xOPtqr6zm7pnRPK",
+      "project": {
+        "updatedAt": "2026-09-15T09:06:26.174Z",
+        "createdAt": "2026-09-15T07:52:30.182Z",
+        "id": "4xOPtqr6zm7pnRPK",
+        "name": "Vamsi Palle <pvamsi170@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "b44ad8c6-f651-461f-93a4-b1a9985e9f23"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
 }

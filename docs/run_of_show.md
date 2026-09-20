@@ -18,7 +18,7 @@ open on the second screen.
 cd ~/sourcecode/fitness-ready
 docker compose up -d && sleep 5
 curl -s localhost:8000/health | jq          # latest_date must be 2026-09-13
-python3 scripts/set_prompt.py v1            # the demo OPENS on the naive prompt
+python3 scripts/set_prompt.py --show        # expect: running v1, from the canvas field
 ```
 
 Then, in the browser, sign in to n8n and open five tabs in this order — you will
@@ -294,11 +294,18 @@ Say all four of these:
 
 ## 0:23–0:27 — v1 → v2, measured (4 min)
 
-Switch the live agent, on stage, in one command (terminal, tab 5):
+Switch the live agent **on the canvas, where the room can see it** (tab 1):
 
-```bash
-python3 scripts/set_prompt.py v2      # reload the n8n tab afterwards
-```
+1. Open the **Edit Fields** node.
+2. Change `prompt_version` from `v1` to `v2`.
+3. **Save the workflow** (⌘S) — the eval workflow calls the saved copy.
+
+> "Both prompts live in this one node. The agent's System Message is one
+> expression that picks between them. That is the whole switch — no deploy, no
+> code, and the eval run that follows reads the same field."
+
+The terminal route still works if the canvas misbehaves:
+`python3 scripts/set_prompt.py v2`, then reload the tab.
 
 Re-ask the chest-tightness question in the chat panel. It escalates, gives no
 training advice, and **calls no tools at all**.
