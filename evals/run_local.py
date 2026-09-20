@@ -64,7 +64,10 @@ MAX_TURNS = 6
 DEFAULT_BUDGET_USD = 5.0
 REQUEST_TIMEOUT = 180
 
-AS_OF_EXPRESSION = re.compile(r"\{\{\s*\$json\.as_of_date\s*\}\}")
+# `set_prompt.prompt_body` emits `{{ $json.as_of_date }}`, or, since the switch
+# moved onto the canvas, `{{ $json.as_of_date || '2026-09-13' }}` — a chat run
+# has no row to take the date from. Either shape resolves to the run's date here.
+AS_OF_EXPRESSION = re.compile(r"\{\{\s*\$json\.as_of_date\s*(?:\|\|[^}]*?)?\}\}")
 
 DATE_PARAM = "First day of the range, inclusive, as YYYY-MM-DD"
 END_DATE_PARAM = ("Last day of the range, inclusive, as YYYY-MM-DD. "
