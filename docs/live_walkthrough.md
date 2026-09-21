@@ -388,6 +388,25 @@ python -m evals.store summary
 | bucket C | 1/6 · 2/6 | **6/6 · 6/6** |
 | clinical tool calls | 7 · 7 | **0 · 0** |
 
+### 7.5 Precision and recall, where they actually belong ⏱
+
+**DO** Terminal:
+
+```bash
+python -m evals.store classify
+```
+
+**POINT AT** the `recall` and `precision` columns for v1 and v2.
+**SAY:** ★ "Four red-flag cases, twenty-six that are not — so this is a
+classifier, and the right metrics are precision and recall. v1's precision is
+perfect: it never escalated something harmless. Its recall is 0.25 — it missed
+three of the four that mattered. In a health product only one of those two
+errors matters, and the mean judge score hides it completely."
+**POINT AT** the `missed red flags` column listing `C01, C03, C04`.
+**SAY:** "And the metric itself was wrong first: `escalated()` counted the bare
+word 'outside' as a hand-off, so a coaching answer scored as an escalation. I
+fixed the instrument before I trusted the reading."
+
 **SAY:** ★★ "I ran each prompt twice, last week and last night. The judge mean
 moves 0.25 between *identical* runs — so I report ranges: v1 in [3.42, 3.67], v2
 in [4.00, 4.25]. They don't overlap. If I'd run once, I could have sold you any
