@@ -172,7 +172,7 @@ read the stored answer from the same case.
 |---|---|---|---|---|
 | A deterministic | 12 | SQL over DuckDB | `tool_correct`, `value_match` | rule-based eval |
 | B judged advice | 12 | a rubric, no answer key | `judge_score` 1–5, `judge_length_words` | LLM-as-judge |
-| C safety / OOD | 6 | escalate or redirect | `escalated`, `contained` | reliability, containment |
+| C safety / OOD | 6 | escalate or redirect | `escalated`, `contained`, and **precision/recall over all 30** | reliability, containment |
 
 Two things to land:
 
@@ -341,6 +341,36 @@ was run twice**, 17 Sep and 20 Sep, and both runs are shown:
 | Tool calls on the 4 clinical cases | 7 · 7 | **0 · 0** |
 | Latency, mean | 15.0s · 13.1s | **9.6s · 8.2s** |
 
+Then the one metric pair that names *which way* the safety failure went. Every
+run is 30 binary predictions — 4 clinical cases that must escalate, 26 that must
+not — so the escalation decision has a confusion matrix:
+
+| Escalation, as a classifier | v1, two runs | v2, two runs |
+|---|---|---|
+| Recall (red flags caught) | 0.25 · 0.25 — and **0.00** in a third run | **1.00 · 1.00** |
+| Precision (escalations that were warranted) | 1.00 · 1.00 | **1.00 · 1.00** |
+| F1 | 0.40 · 0.40 | **1.00 · 1.00** |
+| Specificity (training questions left alone) | 1.00 · 1.00 | 1.00 · 1.00 |
+| Tool-call precision | 0.48 · 0.49 | **0.75 · 0.83** |
+
+> "v1's precision was perfect. It never once escalated a question that didn't
+> need it. It just missed three of the four that did — and in one run, all four.
+> That asymmetry is the whole reason to report precision and recall instead of a
+> hit rate: 1/6 tells you *how many*, recall tells you *which side of the line*
+> the mistakes fell on. In a health product only one of those two errors matters."
+
+Say what it cost to get there: `escalated()` treated the bare word "outside" as
+a hand-off, so "outside what I cover" — and even "outside the baseline band" in
+a bucket A answer — counted as escalations. Precision was unmeasurable until the
+detector required naming someone to hand off *to*. **Fixing the metric was a
+prerequisite for the metric**, and no clinical case in any stored run had been
+relying on the weak marker (checked before changing it).
+
+Tool-call precision is the second free finding: `tool_correct` scored both
+prompts 12/12 and cannot see waste, because it only asks whether the right tool
+was *among* those called. Precision over calls does: v1 made 1.6–1.8 calls per
+case at ~46% on-target, v2 makes ~1.0 at 75–83%.
+
 Two beats worth slowing down for:
 
 - **Safety, 1/6 to 6/6**, from three sentences of prompt. The 7 → 0 tool calls
@@ -406,6 +436,11 @@ Offer the repo, and invite questions.
   the eval loop natively, and Langfuse covers tracing. Same concepts, no code.
 - **"Is 30 cases enough?"** No, and I say so on the last slide-less minute.
   It's enough for direction, not for significance.
+- **"Where are precision and recall?"** On the escalation decision, over all 30
+  cases — that one is a classifier, and its two error types are not equally bad.
+  Not on bucket A: those answers are single values, not retrieved sets, so a hit
+  rate says the same thing without implying resolution 12 cases can't carry. Add
+  a `run_sql` tool or grow the safety set and the rest follow.
 - **"Would you fine-tune?"** Not here. All six failures were fixed in the prompt,
   the tool contract, or a platform setting. Fine-tuning comes after evals plateau,
   with hundreds of labelled examples and a stable task.

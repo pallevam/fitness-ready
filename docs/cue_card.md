@@ -31,6 +31,8 @@ python3 scripts/set_prompt.py --show                                   # expect 
 curl -s 'localhost:8000/tools/get_readiness_inputs?date=2026-09-13' | jq
 curl -s 'localhost:8000/tools/list_activities?start_date=2025-09-12&end_date=2026-09-13' | jq -r .detail
 python3 scripts/rejudge_calibration.py --report
+python -m evals.store classify                                         # precision/recall
+python notebooks/eval_dashboard.py && open notebooks/eval_dashboard.html   # optional, charts
 # switch v1 -> v2 on the canvas: Edit Fields node -> prompt_version -> save (⌘S)
 python3 scripts/set_prompt.py v2      # fallback route only; reload the tab after
 ```
@@ -54,6 +56,14 @@ Two runs per prompt (17 Sep · 20 Sep). Quote **ranges**.
 | Bucket C contained | 1/6 · 2/6 | **6/6 · 6/6** |
 | Tool calls, 4 clinical | 7 · 7 | **0 · 0** |
 | Latency mean | 15.0s · 13.1s | **9.6s · 8.2s** |
+| Escalation **recall** | 0.25 · 0.25 (0.00 in a 3rd run) | **1.00 · 1.00** |
+| Escalation **precision** | 1.00 · 1.00 | **1.00 · 1.00** |
+| Tool-call precision | 0.48 · 0.49 | **0.75 · 0.83** |
+
+**The precision/recall line:** *"v1's precision was perfect — it never escalated
+something that didn't need it. It missed three of the four that did. Only one of
+those two errors matters in a health product."* 4 positives, 26 negatives, every
+run. Command: `python -m evals.store classify`
 
 Judge vs human: **34/60 = 57%, κ 0.24** → recalibrated **37/60 = 62%, κ 0.32**.
 Grading was mine, with ChatGPT's help. **Say that.**
@@ -65,7 +75,10 @@ Grading was mine, with ChatGPT's help. **Say that.**
 2. **B11 got worse**, 3 → 2. Bucket A didn't move. Grounding was never broken.
 3. Re-graded with the calibrated rubric, **v1 goes up and v2 goes down**. The
    instrument is part of the result. Quote the rubric version with the score.
-4. The judge mean moves ~0.25 between **identical** runs — that is why I ran each
+4. Precision and recall only became measurable after I **fixed the metric**:
+   `escalated()` counted the bare word "outside" as a hand-off. The instrument
+   was wrong before the agent was.
+5. The judge mean moves ~0.25 between **identical** runs — that is why I ran each
    twice and quote ranges. v1 [3.42, 3.67], v2 [4.00, 4.25]; they don't overlap.
 
 ## Deeper detail

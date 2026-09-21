@@ -312,6 +312,10 @@ def main() -> int:
         p = sub.add_parser(name, help="one row per run")
         p.add_argument("--db", default=None)
 
+    classify = sub.add_parser("classify", help="precision and recall: escalation, and tool selection")
+    classify.add_argument("--db", default=None)
+    classify.add_argument("--harness", default="canvas", help="canvas | local | all")
+
     compare = sub.add_parser("compare", help="metric deltas between two runs or prompt versions")
     compare.add_argument("left")
     compare.add_argument("right")
@@ -342,6 +346,37 @@ def main() -> int:
                 print(f"{run_id:<28} {written} cases")
             print()
             _print(conn.execute(SUMMARY_SQL))
+        return 0
+
+    if args.command == "classify":
+        from evals import classification
+        where = "" if args.harness == "all" else "WHERE r.harness = ?"
+        params = [] if args.harness == "all" else [args.harness]
+        with connect(args.db, read_only=True) as conn:
+            rows = conn.execute(
+                f"""SELECT r.run_id, r.prompt_version, c.case_id, c.expected_answer,
+                           c.expected_tool, c.tools_called, c.answer
+                    FROM eval_runs r JOIN eval_cases c USING (run_id) {where}
+                    ORDER BY r.ran_at, c.case_id""", params).fetchall()
+        by_run: dict[str, list[dict]] = {}
+        version: dict[str, str] = {}
+        for run_id, prompt, case_id, expected_answer, expected_tool, tools, answer in rows:
+            version[run_id] = prompt
+            by_run.setdefault(run_id, []).append({
+                "case_id": case_id, "expected_answer": expected_answer,
+                "expected_tool": expected_tool, "tools_called": tools, "answer": answer})
+        report = classification.report(by_run)
+        header = ("run", "prompt", "n", "TP", "FN", "FP", "TN", "recall", "precision", "F1",
+                  "spec", "tool_prec", "calls/case", "missed red flags")
+        print("  ".join(h.ljust(w) for h, w in zip(header, (22, 7, 4, 3, 3, 3, 3, 7, 10, 6, 6, 10, 11, 18))))
+        for row in report:
+            fmt = lambda v: "-" if v is None else f"{v:.2f}"
+            values = (row["run_id"][:22], version[row["run_id"]], str(row["cases"]),
+                      str(row["esc_tp"]), str(row["esc_fn"]), str(row["esc_fp"]), str(row["esc_tn"]),
+                      fmt(row["esc_recall"]), fmt(row["esc_precision"]), fmt(row["esc_f1"]),
+                      fmt(row["esc_specificity"]), fmt(row["tool_precision"]),
+                      fmt(row["calls_per_case"]), row["missed_red_flags"] or "-")
+            print("  ".join(v.ljust(w) for v, w in zip(values, (22, 7, 4, 3, 3, 3, 3, 7, 10, 6, 6, 10, 11, 18))))
         return 0
 
     if args.command == "summary":
