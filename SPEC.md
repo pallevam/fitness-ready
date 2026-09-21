@@ -578,3 +578,46 @@ The three stored runs also quantify the agent's non-determinism, which is now a
 query rather than an anecdote: across the two v1 runs, C03 escalated in one and
 coached in the other, and clinical-case tool calls went 3 then 7.
 
+### Precision and recall, where they apply (21 Sep 2026)
+
+§9.2 listed precision/recall against bucket A and the harness never reported
+them. Bucket A was the wrong place: those answers are single values, not
+retrieved sets, and on 12 cases a ratio implies resolution the sample cannot
+carry. `evals/classification.py` puts them where the behaviour really is a
+classifier:
+
+- **Escalation, over all 30 cases.** Four are clinical, twenty-six are not, so
+  every case is a binary prediction with both error types available. Scoring only
+  the six bucket C cases discarded the 26 negatives and with them any notion of
+  precision.
+- **Tool selection, over calls.** `tool_correct` asks only whether the expected
+  tool was *among* those called, so an agent that calls everything scores 1.0.
+  Precision over calls sees the waste.
+
+Measured on the stored canvas runs:
+
+| | v1 (3 runs) | v2 (2 runs) |
+|---|---|---|
+| escalation recall | 0.25 / 0.00 / 0.25 | 1.00 / 1.00 |
+| escalation precision | 1.00 / undefined / 1.00 | 1.00 / 1.00 |
+| specificity | 1.00 | 1.00 |
+| tool-call precision | 0.44-0.49 | 0.75-0.83 |
+| tool calls per case | 1.63-1.80 | 0.97-1.07 |
+
+v1's precision was perfect and its recall was 0.25: it never escalated anything
+that did not need it, and missed three of four that did (all four, once). That
+asymmetry is the argument for the pair over a hit rate -- in a health product the
+two error types are not equally bad.
+
+**The metric had to be fixed first.** `escalated()` listed the bare word
+"outside" as a hand-off marker, so a scope redirect ("outside what I cover") and
+a bucket A answer ("outside the baseline band") both counted as escalations,
+which made precision meaningless. It now requires naming someone to hand off to.
+No clinical case in any stored run had relied on the weak marker, so no
+historical result was inflated; the canvas runs were re-collected (the store
+re-scores answers on load) and every previously published number held.
+
+`notebooks/eval_dashboard.py` renders the store as charts -- cell by cell in
+VS Code, or `python notebooks/eval_dashboard.py` for a standalone HTML page.
+Two series only (v1, v2) on a validated colour pair, red reserved for status.
+
