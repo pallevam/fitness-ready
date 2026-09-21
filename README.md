@@ -94,6 +94,23 @@ make eval-summary
 python -m evals.store compare v1 v2
 ```
 
+Query it live, in a terminal or a browser:
+
+```bash
+duckdb -readonly evals.duckdb -markdown -c "SELECT * FROM eval_runs ORDER BY ran_at"
+duckdb -readonly evals.duckdb            # interactive shell; .mode markdown, .tables
+duckdb -ui evals.duckdb                  # local web UI (installs the ui extension once)
+python -m evals.store classify           # precision and recall per run
+python notebooks/eval_dashboard.py       # six charts -> notebooks/eval_dashboard.html
+```
+
+`evals/results/` holds the same numbers as committed CSVs — `runs.csv` (one row
+per run), `cases.csv` (one row per case, with the answers) and
+`classification.csv` (the confusion matrices). Every stored run answered against
+the **fixture**, so those files carry synthetic health numbers and are safe to
+publish; real Garmin data lives in `wearable-real.duckdb` and never enters the
+eval store. Regenerate with `make eval-export`.
+
 `evals.duckdb` is deliberately separate from `wearable.duckdb`: the tools server
 holds that file open, and eval output must never be mistakable for wearable data.
 Stored answers are re-scored with today's metric definitions on load, so a later

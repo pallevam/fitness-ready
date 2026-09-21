@@ -1,4 +1,4 @@
-.PHONY: help fixture load load-real inventory inventory-real serve test evals probe pull load-api eval-store eval-summary stack clean
+.PHONY: help fixture load load-real inventory inventory-real serve test evals probe pull load-api eval-store eval-summary eval-export stack clean
 
 help:
 	@grep -E '^[a-z-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  %-12s %s\n", $$1, $$2}'
@@ -39,6 +39,9 @@ load-api:  ## Pull, then load raw/api/ into wearable-real.duckdb (never the fixt
 
 eval-store: ## Phase 5: pull finished eval runs out of n8n into evals.duckdb
 	python -m evals.store collect --workflow-id $(WORKFLOW) $(foreach l,$(LABELS),--label $(l))
+
+eval-export: ## Write the eval store to committed CSVs in evals/results/
+	python -m evals.store export
 
 eval-summary: ## One row per stored eval run
 	python -m evals.store summary

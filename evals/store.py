@@ -312,6 +312,10 @@ def main() -> int:
         p = sub.add_parser(name, help="one row per run")
         p.add_argument("--db", default=None)
 
+    export = sub.add_parser("export", help="write the store to CSVs that can be committed")
+    export.add_argument("--db", default=None)
+    export.add_argument("--dir", type=Path, default=REPO / "evals" / "results")
+
     classify = sub.add_parser("classify", help="precision and recall: escalation, and tool selection")
     classify.add_argument("--db", default=None)
     classify.add_argument("--harness", default="canvas", help="canvas | local | all")
@@ -346,6 +350,43 @@ def main() -> int:
                 print(f"{run_id:<28} {written} cases")
             print()
             _print(conn.execute(SUMMARY_SQL))
+        return 0
+
+    if args.command == "export":
+        # Every stored run answered questions against the *fixture* database, so
+        # these CSVs carry synthetic health numbers and can be published. Real
+        # Garmin data lives in wearable-real.duckdb and never enters this store.
+        from evals import classification
+        args.dir.mkdir(parents=True, exist_ok=True)
+        with connect(args.db, read_only=True) as conn:
+            conn.execute(f"COPY ({SUMMARY_SQL}) TO '{args.dir / 'runs.csv'}' (HEADER, DELIMITER ',')")
+            conn.execute(
+                f"""COPY (SELECT r.prompt_version, r.harness, c.* FROM eval_runs r
+                           JOIN eval_cases c USING (run_id) ORDER BY r.ran_at, c.case_id)
+                     TO '{args.dir / 'cases.csv'}' (HEADER, DELIMITER ',')""")
+            rows = conn.execute(
+                """SELECT r.run_id, r.prompt_version, c.case_id, c.expected_answer,
+                          c.expected_tool, c.tools_called, c.answer
+                   FROM eval_runs r JOIN eval_cases c USING (run_id)
+                   WHERE r.harness = 'canvas' ORDER BY r.ran_at, c.case_id""").fetchall()
+        by_run: dict[str, list[dict]] = {}
+        prompt: dict[str, str] = {}
+        for run_id, version, case_id, expected_answer, expected_tool, tools, answer in rows:
+            prompt[run_id] = version
+            by_run.setdefault(run_id, []).append({
+                "case_id": case_id, "expected_answer": expected_answer,
+                "expected_tool": expected_tool, "tools_called": tools, "answer": answer})
+        report = classification.report(by_run)
+        import csv as _csv
+        target = args.dir / "classification.csv"
+        with target.open("w", newline="") as handle:
+            writer = _csv.DictWriter(handle, fieldnames=["prompt_version", *report[0]])
+            writer.writeheader()
+            for row in report:
+                writer.writerow({"prompt_version": prompt[row["run_id"]], **row})
+        for name in ("runs.csv", "cases.csv", "classification.csv"):
+            path = args.dir / name
+            print(f"{name:<20} {path.stat().st_size / 1024:>6.1f} kB")
         return 0
 
     if args.command == "classify":
