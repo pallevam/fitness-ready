@@ -76,6 +76,33 @@ export data for the same day or activity converge on the same row.
 `raw/` and `*.duckdb` are gitignored. This is personal health data; keep it that
 way.
 
+## Pointing the agent at real data
+
+The tools server serves whichever database `WEARABLE_DB_FILE` names:
+
+```bash
+# real Garmin data
+echo 'WEARABLE_DB_FILE=./wearable-real.duckdb' >> .env && docker compose up -d tools
+# back to the fixture, which the eval answer key is pinned to
+sed -i '' 's|^WEARABLE_DB_FILE=.*|WEARABLE_DB_FILE=./wearable.duckdb|' .env && docker compose up -d tools
+curl -s localhost:8000/health        # `rows` tells you which one is live
+```
+
+The agent's `as_of_date` falls back to the real clock (`$now`) when no eval row
+supplies one, so chat follows today while eval runs stay pinned.
+
+**Switch back before running evals.** Bucket A's answer key is computed from the
+fixture (`evals/ground_truth.py`), so scoring a run against real data compares
+answers to the wrong truth. `make evals` reads the fixture directly and is
+unaffected; it is the n8n eval workflow, which goes through the tools server,
+that would silently score nonsense.
+
+**What real data cannot do.** Activities, resting HR and steps are good
+throughout. HRV is absent entirely and scored sleep stops at 2026-03-02, so
+`get_hrv_trend` returns nothing and the readiness rubric in SPEC §8 reports
+missing inputs rather than a colour. Workout questions work fully; readiness
+questions do not.
+
 ## The agent and the eval loop
 
 `docker compose up -d` brings up the tools server, n8n (<http://localhost:5678>)

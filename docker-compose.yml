@@ -7,7 +7,11 @@ services:
     ports: ["8000:8000"]
     volumes:
       # The DuckDB file is built on the host by `python -m loader.load_garmin`.
-      - ./wearable.duckdb:/data/wearable.duckdb:ro
+      # Which database the agent sees. Default: the fixture, which the eval
+      # dataset's answer key is pinned to. Point it at the real one with
+      # WEARABLE_DB_FILE=./wearable-real.duckdb in .env, then
+      # `docker compose up -d tools`. Switch back before any eval run.
+      - ${WEARABLE_DB_FILE:-./wearable.duckdb}:/data/wearable.duckdb:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 15s

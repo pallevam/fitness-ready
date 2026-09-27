@@ -621,3 +621,22 @@ re-scores answers on load) and every previously published number held.
 VS Code, or `python notebooks/eval_dashboard.py` for a standalone HTML page.
 Two series only (v1, v2) on a validated colour pair, red reserved for status.
 
+### Serving real data to the agent (27 Sep 2026)
+
+`docker-compose.yml` mounts `${WEARABLE_DB_FILE:-./wearable.duckdb}`, so the
+agent can be pointed at `wearable-real.duckdb` without touching the workflow,
+and the fixture stays the default. `as_of_date` in the agent's Set node now
+falls back to `$now` instead of the fixture's last day, so chat follows the real
+clock while eval rows keep supplying their own pinned date.
+
+Verified end to end on real data: asked for two weeks of workouts and for
+monthly running totals, the agent called `list_activities` once per question and
+its figures matched SQL exactly (September 41.71 km over 8 runs, longest 9.01 km;
+August 42.93 km, longest 10.02 km).
+
+The limits are unchanged and now visible in chat rather than in a note: HRV has
+no rows at all and scored sleep stops at 2026-03-02, so readiness questions
+report missing inputs. Bucket A ground truth remains pinned to the fixture --
+`make evals` reads it directly, but an n8n eval run goes through the tools
+server, so the served database must be switched back before running one.
+
