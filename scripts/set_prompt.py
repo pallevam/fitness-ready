@@ -18,9 +18,11 @@ same field, so both routes agree. The eval workflow calls this workflow, so an
 eval run picks up whichever version the field names.
 
 Each prompt body is stored as an n8n expression, with `{{ $json.as_of_date }}`
-rewritten to `{{ $json.as_of_date || '2026-09-13' }}`: an eval run passes the
-row's date in, and a hand-driven chat run has none, so it falls back to the last
-day the fixture covers. The repo-notes under each prompt are stripped — they name
+rewritten to `{{ $json.as_of_date || $now.format('yyyy-MM-dd') }}`: an eval run
+passes the row's date in, and a hand-driven chat run has none, so it falls back to
+today. The fallback must be repeated here because `$json` in the Set node is its
+input, not the `as_of_date` the same node writes. The repo-notes under each
+prompt are stripped — they name
 the failures the demo wants to happen.
 
 Reload the n8n tab after switching from here: an open tab saves the old value
@@ -41,7 +43,7 @@ REPO = Path(__file__).resolve().parent.parent
 WORKFLOW = "workflow_agent"
 CONTAINER_PATH = "/tmp/agent_prompt_switch.json"
 SET_NODE = "Edit Fields"
-FALLBACK_DATE = "2026-09-13"
+FALLBACK_DATE = "$now.format('yyyy-MM-dd')"
 SELECTOR = "={{ $json.prompt_version === 'v1' ? $json.prompt_v1 : $json.prompt_v2 }}"
 MARKERS = {"v1": "Be helpful and encouraging", "v2": "One action, one sentence"}
 
@@ -112,7 +114,7 @@ def prompt_body(version: str) -> str:
     if not body:
         raise SystemExit(f"prompts/system_{version}.md looks empty")
     return body.replace(
-        "{{ $json.as_of_date }}", "{{ $json.as_of_date || '" + FALLBACK_DATE + "' }}"
+        "{{ $json.as_of_date }}", "{{ $json.as_of_date || " + FALLBACK_DATE + " }}"
     )
 
 

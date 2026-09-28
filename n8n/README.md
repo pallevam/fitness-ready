@@ -17,24 +17,21 @@ Chat Trigger ──► Set (as_of_date) ──► AI Agent ──► Respond
                                         └── Tools           (5 × HTTP Request Tool)
 ```
 
-1. **Set** node writes `as_of_date`. It is pinned to the literal `2026-09-13` —
-   the last day the fixture covers, and the last day the real Garmin export
-   covers too. `{{ $now.format('yyyy-MM-dd') }}` looks more natural and returns
-   empty data from every tool, because there is no data after the 13th.
-
-   **This assignment is unconditional, and Phase 5 has to change it.** The eval
-   workflow sets `as_of_date` from the dataset row before calling this workflow;
-   an unconditional Set overwrites that value on every case. Today all 30 cases
-   are pinned to `2026-09-13`, so the bug is invisible — the run produces correct
-   results for the wrong reason, and stays correct only until someone adds a case
-   on another date. When wiring Phase 5, change the value to:
+1. **Set** node writes `as_of_date`:
 
    ```
-   ={{ $json.as_of_date || '2026-09-13' }}
+   ={{ $json.as_of_date || $now.format('yyyy-MM-dd') }}
    ```
 
-   which takes the row's date when there is one and keeps the pinned default for
-   hand-driven chat runs.
+   The eval workflow passes each dataset row's date (all pinned to `2026-09-13`,
+   the fixture's last day, because the answer key is computed there); chat runs
+   have none and follow the real clock, which suits the daily-synced real data.
+   An unconditional value would overwrite the row's date on every eval case.
+
+   **The system prompts must repeat the fallback.** They are assignments in the
+   same Set node, and `$json` there is the node's *input*, not the `as_of_date`
+   it just wrote. A prompt reading `{{ $json.as_of_date || '2026-09-13' }}` told
+   every chat run the data ended on 13 Sep while the field said today.
 
    **Turn on "Include Other Input Fields".** Without it the Set node emits only
    `as_of_date` and `chatInput` never reaches the agent, so the agent answers an
