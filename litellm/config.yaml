@@ -27,9 +27,13 @@ model_list:
       model: openai/gpt-5.1-2025-11-13
       api_key: os.environ/OPENAI_API_KEY
 
-  - model_name: gemini-2.5-pro
+  # --- agent fallbacks only (router_settings below) ------------------------
+  # Flash, not Pro: this key is on Gemini's free tier, where every Pro model's
+  # quota is 0. gemini-2.5-pro, the judge option that used to sit here, is
+  # retired for new keys and 404s.
+  - model_name: gemini-3.5-flash
     litellm_params:
-      model: gemini/gemini-2.5-pro
+      model: gemini/gemini-3.5-flash
       api_key: os.environ/GEMINI_API_KEY
 
 litellm_settings:
@@ -42,6 +46,23 @@ litellm_settings:
   failure_callback: ["langfuse"]
   # Providers disagree on which sampling params they accept; drop rather than 400.
   drop_params: true
+
+router_settings:
+  # The agent's chain: Claude, then GPT, then Gemini. Any error on one model --
+  # rate limit, quota, outage, a dropped connection -- moves the call to the next
+  # (2026-09-30: two chat runs died on "AnthropicException - Server disconnected"
+  # with nowhere to go). Langfuse records which model actually answered.
+  #
+  # Judges get no fallbacks on purpose. A judge that silently changes vendor
+  # mid-run makes its scores incomparable; it should fail instead.
+  fallbacks:
+    - claude-sonnet-5: ["gpt-5.1", "gemini-3.5-flash"]
+  # One quick retry for a blip before moving on; more just delays the fallback.
+  num_retries: 1
+  # A model that keeps failing is skipped for a minute rather than retried on
+  # every call.
+  allowed_fails: 2
+  cooldown_time: 60
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
