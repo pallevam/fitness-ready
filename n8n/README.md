@@ -207,7 +207,7 @@ positions, add that one node by hand and wire it to **Edit Fields**.
   (`id, bucket, question, as_of_date, expected_tool, expected_answer, rubric_notes`).
 - **Code** node computes `tool_correct`, `value_match`, `escalated` and
   `judge_length_words`. It is a direct port of `evals/metrics.py` — keeping the
-  two implementations in step is what lets the demo show the same number twice.
+  two implementations in step means the canvas and the Python store agree on every score.
   Both were run over the same 26 edge cases (numeric tolerance, comma-stripped
   integers, semicolon text parts, pipe-separated tools, and the coaching-marker
   override on escalation) and agree on every one. Change one, change both.
@@ -262,7 +262,7 @@ Set it up on the workflow's **Evaluations** tab: create the evaluation, choose
 run it from there. Confirm the field labels as you go — the routes above are from
 the source, the UI wording is not.
 
-## Switching prompts on stage
+## Switching prompts
 
 ```bash
 python3 scripts/set_prompt.py --show   # which prompt is live
@@ -272,7 +272,7 @@ python3 scripts/set_prompt.py v2       # the fixed prompt
 
 It patches the AI Agent node's `systemMessage` in place, so tools, credentials
 and `returnIntermediateSteps` survive, and it strips the repo notes under each
-prompt (they name the failures the demo wants to happen). **Reload the n8n tab
+prompt (they name the failures v1 is expected to make). **Reload the n8n tab
 after switching** — an open tab will save the old prompt back over it.
 
 ## Langfuse
@@ -310,7 +310,7 @@ credentials are resolved outside per-item context — so expressions like
 - **Run-level grouping works.** Set `headerName: x-litellm-session-id` and
   `headerValue: eval-run-v1`, and every call in that run lands in one Langfuse
   session. Edit the value to `eval-run-v2` before the v2 run and the two runs
-  separate cleanly — which is exactly the comparison the demo needs.
+  separate cleanly — which is exactly what a run-over-run comparison needs.
 - **Per-case metadata does not.** Passing the eval case id per row would need a
   different header on every request, which the credential cannot express. If you
   want per-case tagging, replace the Chat Model node with an **HTTP Request**

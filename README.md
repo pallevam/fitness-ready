@@ -11,12 +11,15 @@ the source of truth; this file is how to run it.
 ## Layout
 
 ```
-loader/   Garmin export -> DuckDB       (Phase 0-1)
-tools/    five named HTTP tools         (Phase 2)
-evals/    dataset, ground truth, judge  (Phase 4)
-prompts/  system_v1 (naive) and v2      (Phase 6)
-n8n/      build sheet for the canvas    (Phase 3, 5)
-tests/    the definitions in SPEC §6.3, the loader, the tool contracts, the dataset
+loader/    Garmin export or API pull -> DuckDB
+fetcher/   Garmin Connect API client and daily pull
+tools/     five named HTTP tools the agent calls
+evals/     dataset, ground truth, metrics, judge, run store
+prompts/   system_v1 (baseline) and v2
+n8n/       build sheet and exported workflows
+litellm/   model routing and Langfuse tracing
+scripts/   daily sync, prompt switching, dataset loading
+tests/     the definitions in SPEC §6.3, the loader, the tool contracts, the dataset
 ```
 
 ## Quick start (no Garmin export needed)
@@ -97,18 +100,40 @@ answers to the wrong truth. `make evals` reads the fixture directly and is
 unaffected; it is the n8n eval workflow, which goes through the tools server,
 that would silently score nonsense.
 
-**What real data cannot do.** Activities, resting HR and steps are good
-throughout. HRV is absent entirely and scored sleep stops at 2026-03-02, so
-`get_hrv_trend` returns nothing and the readiness rubric in SPEC §8 reports
-missing inputs rather than a colour. Workout questions work fully; readiness
-questions do not.
+**What real data can and cannot do.** Activities, resting HR and steps are good
+throughout. Scored sleep and nightly HRV exist from 2026-09-28, when the watch
+started being worn overnight; before that there is a gap back to 2026-03-02.
+Garmin needs about three weeks of consecutive nights before it reports an HRV
+baseline, so until then the readiness rubric in SPEC §8 treats the HRV check as
+missing. A night the watch did not record (battery, charging, off-wrist) is a
+permanent gap. The watch reports no training effect or recovery time for
+strength sessions, so those count as hard only on zone-4 minutes.
+
+## Daily sync
+
+`scripts/daily_sync.sh` pulls the last 30 days from the Connect API, loads
+`wearable-real.duckdb`, and restarts the tools container. The restart matters:
+the server keeps one database connection from startup and will not see new
+rows otherwise. A launchd agent runs it at 11:00 and 21:00:
+
+```bash
+launchctl kickstart gui/$(id -u)/com.fitness-ready.daily-sync   # run it now
+tail ~/Library/Logs/fitness-ready-sync.log
+launchctl bootout gui/$(id -u)/com.fitness-ready.daily-sync     # remove it
+```
+
+The plist lives at `~/Library/LaunchAgents/com.fitness-ready.daily-sync.plist`,
+outside the repo. Garmin only has what the phone has uploaded: open Garmin
+Connect after waking, or the night is not there to pull.
 
 ## The agent and the eval loop
 
 `docker compose up -d` brings up the tools server, n8n (<http://localhost:5678>)
 and Langfuse (<http://localhost:3000>). Build the two workflows from
 `n8n/README.md`, then run the dataset through the Evaluations tab. The iteration
-arc — v1, diagnose from traces, v2, compare — is in `docs/demo_script.md`.
+loop — run v1, diagnose from Langfuse traces, change the prompt, run v2, compare
+— is SPEC §9.5, and the measured v1 → v2 results are in SPEC's implementation
+notes.
 
 ## Eval results
 

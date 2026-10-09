@@ -4,7 +4,7 @@ Two ways to use it:
 
     # 1. Interactively. Open in VS Code and run cell by cell -- the `# %%`
     #    markers make this a notebook. Or: jupytext --to ipynb this file.
-    # 2. As a script, to get one standalone page you can keep open on stage:
+    # 2. As a script, to get one standalone page:
     python notebooks/eval_dashboard.py      # -> notebooks/eval_dashboard.html
 
 Reads `evals.duckdb` (eval runs) and `wearable-real.duckdb` (real Garmin data),
@@ -221,7 +221,7 @@ def write_html(path: Path | None = None) -> Path:
 
 # %% [markdown]
 # ## Runs on record
-# `harness` matters: `canvas` is the n8n agent, the demo's subject. `local` is
+# `harness` matters: `canvas` is the n8n agent, the real subject. `local` is
 # the headless stand-in, which scores systematically higher — useful for
 # iteration, never comparable to canvas numbers.
 
@@ -261,7 +261,7 @@ fig_latency(runs_table()).show()
 
 # %% [markdown]
 # ## The other half: real watch data
-# The demo runs on a calibrated fixture because the real export has no HRV.
+# Evals run on a calibrated fixture because the real export has no HRV.
 # What the real data does have is daytime training.
 
 # %%

@@ -27,7 +27,7 @@ def test_the_system_message_resolves_the_n8n_expression():
 
 
 def test_the_repo_notes_are_not_sent_to_the_model():
-    """v1's trailing paragraph names the failures the demo wants to happen."""
+    """v1's trailing paragraph names the failures it is expected to make."""
     v1 = run_local.system_message("v1", "2026-09-13")
     assert "deliberately thin" not in v1
     assert "Expected failures" not in v1

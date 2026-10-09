@@ -6,8 +6,7 @@
 
 `evals/calibration/calibration.json` holds twelve bucket B answers from the
 17 Sep canvas runs, each with the tool results the agent saw, a human grading
-(Vamsi, assisted by ChatGPT, blind to the judge and to the prompt version -- say
-so on stage), and the judge's own grading under two rubric versions.
+(Vamsi, assisted by ChatGPT, blind to the judge and to the prompt version), and the judge's own grading under two rubric versions.
 
 `--report` compares the stored gradings; `--judge` re-runs the judge with a
 rubric and reports that instead. The judge sees the agent's system prompt from

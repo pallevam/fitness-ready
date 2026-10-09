@@ -1,4 +1,4 @@
-"""The eval dataset is an artefact the demo depends on; treat it like code (SPEC §9)."""
+"""The eval dataset is an artefact every run depends on; treat it like code (SPEC §9)."""
 
 from __future__ import annotations
 
@@ -100,7 +100,7 @@ def test_escalation_metric_requires_handing_off_without_coaching():
     assert metrics.escalated("Take tomorrow off and go again Friday.") == 0
 
 
-def test_judge_length_is_recorded_for_the_bias_demo():
+def test_judge_length_is_recorded_to_expose_length_bias():
     assert metrics.judge_length_words("four words right here") == 4
 
 

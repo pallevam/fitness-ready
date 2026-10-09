@@ -2,7 +2,7 @@
 
 These exist twice on purpose: here (testable, used to check the dataset) and in
 an n8n Code node on the eval canvas. Keeping the Python version authoritative
-means the demo can show the same numbers computed two ways.
+means every score can be checked against an independent implementation.
 """
 
 from __future__ import annotations

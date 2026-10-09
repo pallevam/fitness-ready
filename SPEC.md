@@ -1,17 +1,14 @@
 # Wearable Coach — Design Spec (v0.1)
 
 Source of truth for the agent, data layer, and evaluation harness.
-Owner: Vamsi. Status: locked for Phase 1; open items listed in §11.
-Last updated: 13 Sep 2026.
+Owner: Vamsi. Status: Phase 1 built; open items listed in §11.
+Last updated: 9 Oct 2026.
 
 ---
 
 ## 1. Purpose
 
-Two goals, one codebase:
-
-1. **Demo** for the Interview Kickstart Agentic AI instructor role, EM track, topic *"Evaluating and Finetuning Agents: Low Code."* The agent is the specimen; the evaluation loop is the lesson. 20–30 minutes, live or recorded.
-2. **Long-term project**: a personal coach that reads consumer wearable data (Garmin first, others later) and turns approximate numbers into useful, honest guidance. Useful to Vamsi and to anyone with a wrist device that doesn't compute readiness for them.
+A personal coach that reads consumer wearable data (Garmin first, others later) and turns approximate numbers into useful, honest guidance — useful to Vamsi and to anyone with a wrist device that doesn't compute readiness for them — together with the evaluation harness that proves each change to it is an improvement.
 
 Thesis: consumer wearables give numbers that are roughly right and occasionally wrong. Most apps present them as exact. An agent that reasons over trends, respects data-quality flags, and says what it doesn't know is more useful than one that reads numbers back.
 
@@ -19,7 +16,7 @@ Thesis: consumer wearables give numbers that are roughly right and occasionally 
 
 A coach that reads your wearable data, answers questions and gives training/recovery guidance grounded in the numbers, and is explicit that those numbers are approximations.
 
-**Phase 1 (demo):** question-answering only, single user, Garmin export as data source.
+**Phase 1:** question-answering only, single user, Garmin export as data source.
 **Phase 2:** proactive weekly summary, daily refresh via Garmin Connect API, second device.
 
 ## 3. Non-goals (Phase 1)
@@ -27,12 +24,12 @@ A coach that reads your wearable data, answers questions and gives training/reco
 - No medical advice, diagnosis, or medication guidance. Red-flag inputs are escalated, not answered.
 - No per-minute/per-second data. Daily and per-activity summaries only.
 - No multi-user auth. One DuckDB file, one person.
-- No fine-tuning. "Finetuning" in the IK topic title is handled as prompt and tool iteration measured by evals, which is what low-code platforms actually offer. Say this explicitly in the demo.
+- No fine-tuning. The agent improves through prompt and tool iteration measured by evals, which is what low-code platforms actually offer.
 - No Training Readiness / Training Status tables. The vivoactive 5 doesn't produce them; the agent reconstructs a readiness judgement from raw inputs instead. Never fabricate these.
 
-## 4. Audience assumptions (state at the start of the demo)
+## 4. Users
 
-Working professionals, 5+ years, engineering managers. Assume: they know what an LLM and an API are, have seen a chatbot built, have not built an eval harness. Do not assume LangChain or n8n knowledge.
+One person wearing a Garmin vivoactive 5, asking in chat. The agent must assume nothing about their data quality: nights go unrecorded, the watch omits metrics, and the as-of day may have no data yet.
 
 ## 5. Architecture
 
@@ -51,8 +48,8 @@ Garmin export zip ──► loader (Python) ──► DuckDB (wearable.duckdb)
 
 Platform choices and why:
 
-- **n8n, self-hosted (Docker).** Matches the IK EM track (every other EM topic names n8n). Evaluations are native to the canvas: dataset in, metrics out, run-over-run comparison. Health data stays on the machine.
-- **Langfuse, self-hosted (Docker).** Covers the observability half of the IK deck (traces, tool calls, latency, token cost, prompt versioning) that n8n's eval tab doesn't.
+- **n8n, self-hosted (Docker).** Evaluations are native to the canvas: dataset in, metrics out, run-over-run comparison. Health data stays on the machine.
+- **Langfuse, self-hosted (Docker).** Covers the observability that n8n's eval tab doesn't: traces, tool calls, latency, token cost, prompt versioning.
 - **DuckDB.** One file, no server, reads JSON natively, fast aggregates.
 - **Python (FastAPI) for tools.** n8n calls them via HTTP Request tool nodes. Keeps SQL out of the LLM.
 - **LLM:** any; default to a mid-tier model for the agent and a stronger one for the judge. Model choice is a parameter, not a design decision.
@@ -180,7 +177,7 @@ System prompt principles (the prompt itself is versioned in Langfuse; these are 
 5. **Escalate, don't coach, on red flags.** Chest pain, fainting, resting HR spike with symptoms, medication questions, anything clinical → say this is outside scope and recommend a clinician. Do not soften with a workout suggestion.
 6. **Stay in scope.** Off-topic questions get a short redirect, not an answer.
 
-Readiness heuristic (the reconstruction of what the watch doesn't provide): a simple rubric the prompt uses, not a model. Green if sleep trustworthy and ≥70, HRV within baseline, resting HR delta ≤ +3, recovery remaining 0. Amber on one miss. Red on two or more, or any untrustworthy sleep plus a miss. The heuristic is intentionally visible so it can be evaluated and iterated on stage.
+Readiness heuristic (the reconstruction of what the watch doesn't provide): a simple rubric the prompt uses, not a model. Green if sleep trustworthy and ≥70, HRV within baseline, resting HR delta ≤ +3, recovery remaining 0. Amber on one miss. Red on two or more, or any untrustworthy sleep plus a miss. The heuristic is intentionally visible so it can be evaluated and iterated on.
 
 ## 9. Evaluation design
 
@@ -188,9 +185,9 @@ Readiness heuristic (the reconstruction of what the watch doesn't provide): a si
 
 ~30 test cases, stored in a Google Sheet or n8n data table. Columns: `id, bucket, question, as_of_date, expected_tool, expected_answer, rubric_notes`. `as_of_date` pins the agent's "today" so ground truth is stable.
 
-### 9.2 Three buckets (map to IK deck sections)
+### 9.2 Three buckets
 
-| Bucket | Example | Ground truth | Metric | IK deck section |
+| Bucket | Example | Ground truth | Metric | Eval technique |
 |---|---|---|---|---|
 | **A. Deterministic** (~12 cases) | "Average resting HR over the last 30 days?" "Longest run this year?" "Which nights last week had unreliable sleep data?" | SQL over DuckDB | `tool_correct` (0/1), `value_match` within tolerance (0/1) | Rule-based eval, precision/recall |
 | **B. Judged advice** (~12 cases) | "Should I do a hard run tomorrow?" "My HRV is down this week, what does that mean?" | none; rubric | LLM-as-judge score 1–5 on: cites data, one action, names driver, acknowledges uncertainty, no medical overreach | LLM-as-judge, biases |
@@ -205,9 +202,9 @@ Readiness heuristic (the reconstruction of what the watch doesn't provide): a si
 
 ### 9.4 Judge
 
-Separate model, separate prompt, point-wise scoring with the rubric in §9.2. Demo beat: show the judge preferring a longer padded answer over a shorter correct one, then fix the rubric ("penalise unsupported claims; length is not quality") and rerun.
+Separate model, separate prompt, point-wise scoring with the rubric in §9.2. Check it for length bias: a judge that prefers a longer padded answer over a shorter correct one needs its rubric fixed ("penalise unsupported claims; length is not quality") and the cases rerun.
 
-### 9.5 Iteration loop (the demo arc)
+### 9.5 Iteration loop
 
 1. Run v1 (naive prompt, tools wired, no readiness heuristic). Expect: bucket A mostly passes, B ~2–3/5, C fails 1–2.
 2. Diagnose failures from Langfuse traces.
@@ -218,32 +215,49 @@ Separate model, separate prompt, point-wise scoring with the rubric in §9.2. De
 ## 10. Repo layout
 
 ```
-wearable-coach/
+fitness-ready/
   README.md
   SPEC.md                  # this file
-  .gitignore               # raw/, *.duckdb, .env
-  raw/                     # unzipped Garmin export (never committed)
+  db.py                    # DuckDB connection and path resolution
   loader/
-    inventory.py           # list export files, map to tables
-    load_garmin.py         # export -> DuckDB
+    inventory.py           # list export files, map to tables (Phase 0)
+    discovery.py           # classify files by pattern
+    fieldmap.py            # source field -> column mapping
+    load_garmin.py         # export or API pull -> DuckDB
+    make_fixture.py        # deterministic synthetic export (the eval subject)
     schema.sql
+  fetcher/                 # Garmin Connect API pull (stage 2)
+    client.py              # session, token cache, retries, rate limiting
+    endpoints.py           # the six calls we make, and why no others
+    normalise.py           # API responses -> export-shaped records
+    probe.py, pull.py
   tools/
     server.py              # FastAPI, 5 endpoints
     queries.py             # SQL behind each tool
     derived.py             # §6.3 definitions
   evals/
     dataset.csv            # §9.1
-    ground_truth.py        # computes expected_answer for bucket A from DuckDB
-    judge_prompt.md
-  n8n/
-    workflow_agent.json    # exported workflow
-    workflow_eval.json
+    ground_truth.py        # bucket A answers, computed from the fixture
+    metrics.py             # deterministic metrics (mirrored in the eval workflow)
+    classification.py      # precision/recall where they apply
+    judge_prompt*.md       # v1 (biased baseline), current, v3
+    store.py, flatted.py   # n8n runs -> evals.duckdb
+    run_local.py           # run the dataset without n8n
+    results/               # committed CSVs of every stored run
+    calibration/           # judge-vs-human calibration set
   prompts/
-    system_v1.md
-    system_v2.md
-  docker-compose.yml       # n8n + langfuse + tools
-  docs/
-    demo_script.md
+    system_v1.md, system_v2.md
+  n8n/
+    README.md              # build sheet for both workflows
+    workflow_*.json        # exported workflows
+  litellm/config.yaml      # model routing, fallbacks, Langfuse callbacks
+  scripts/
+    daily_sync.sh          # pull + load + restart tools (run by launchd)
+    set_prompt.py, load_eval_dataset.py, rejudge_calibration.py
+  notebooks/eval_dashboard.py
+  tests/
+  docker-compose.yml       # tools + litellm + n8n + langfuse
+  raw/                     # export and API pulls (never committed)
 ```
 
 ## 11. Open decisions
@@ -251,7 +265,7 @@ wearable-coach/
 1. **`run_sql` as a sixth tool** for open-ended questions. Default: no in Phase 1. Revisit after v2 evals.
 2. **Activity types beyond running/walking** that matter to Vamsi. Default: treat all types uniformly via the hard-session rule in §6.3.
 3. **LLM providers** for agent and judge. Default: pick whatever keys exist; keep swappable.
-4. **Eval dataset store**: Google Sheet (easier to show on stage) vs n8n data table (no external dependency). Default: Google Sheet.
+4. ~~**Eval dataset store**: Google Sheet vs n8n data table.~~ Resolved: n8n data table (see Phase 5 notes).
 
 ## 12. Phases and milestones
 
@@ -263,8 +277,8 @@ wearable-coach/
 | 3 | n8n agent workflow | answers 5 sample questions end to end; traces visible in Langfuse |
 | 4 | Eval dataset + ground truth | 30 cases; bucket A expected values computed |
 | 5 | n8n eval workflow | metrics appear in Evaluations tab for a full run |
-| 6 | v1 → v2 iteration | before/after metrics captured; demo script written |
-| 7 | Demo rehearsal | 25-minute dry run recorded |
+| 6 | v1 → v2 iteration | before/after metrics captured |
+| 7 | Real data, daily | the agent answers from a database refreshed every day from the Connect API |
 
 Phase 0–2 can start before the Garmin zip arrives using a synthetic fixture (`raw/fixture/`) generated from Garmin's documented field names; swap in real data when it lands.
 
@@ -292,7 +306,7 @@ Decisions made while implementing Phases 0–2 and 4 that the spec left open:
   reachable by the agent in Phase 1, so no eval case asks for them. Add a sixth
   tool alongside the §11 decision on `run_sql` if that changes.
 - **Judge prompt ships in two versions.** `evals/judge_prompt_v1.md` is the
-  biased rubric used for the §9.4 demo beat; `evals/judge_prompt.md` is the fix.
+  biased rubric kept as the §9.4 baseline; `evals/judge_prompt.md` is the fix.
 
 ### What the real export changed (15 Sep 2026)
 
@@ -336,9 +350,7 @@ key rather than `calories`.
 **Consequence: two databases.** `wearable.duckdb` is built from the fixture and
 remains what the tools, n8n and the eval dataset point at;
 `wearable-real.duckdb` holds the export. The readiness rubric in §8 cannot run on
-the real data, so the demo keeps the fixture as its subject and uses the real
-database for one deliberate beat: point the agent at data with no HRV and let the
-eval harness catch it inventing a readiness call. Bucket A ground truth stays
+the real data, so the fixture stays the eval subject. Bucket A ground truth stays
 pinned to the fixture; `make evals` must not be run against the real database.
 
 ### Tracing goes through a LiteLLM proxy (15 Sep 2026)
@@ -387,8 +399,8 @@ constant in `PROFILE` and the `DAILY_*`/`SLEEP_*` blocks was measured from
 | Steps / stress / body battery | 6174 / 34.9 / 61 | 6437 / 35.4 / 61 |
 | Sleep | 342 min, score 70.3 | 340 min, score 69.5 |
 
-Three deliberate departures from the real data, each because the real data is
-unusable for the demo:
+Three deliberate departures from the real data, each because the real data could
+not exercise the rubric:
 
 1. **Resting HR is anchored to 57.5**, the overnight-worn mean (58.3), not the
    all-days mean (62.7). The 4.4 bpm gap between those is a measurement artifact
@@ -402,8 +414,8 @@ unusable for the demo:
    fixture keeps them so the training-effect arm of §6.3 stays exercised.
 
 Short sleep (5.7 h mean) was kept rather than idealised: inventing eight-hour
-nights would make every readiness call green and the demo pointless. The pinned
-demo week now ends Red — sleep 72 passes, HRV 48 is below baseline, resting HR
+nights would make every readiness call green and the rubric untested. The pinned
+eval week now ends Red — sleep 72 passes, HRV 48 is below baseline, resting HR
 is +3.3, and 18 hours of recovery are outstanding from a hard badminton session.
 
 The eval set moved with it: `A08` now asks about badminton minutes rather than
@@ -458,7 +470,7 @@ database holds 32 nights, the latest 2026-03-02.
 it returned daily summaries, 4 new activities, VO2 max and fitness age, but no
 HRV on any night, no scored sleep, and null training effect and recovery on
 every activity. `hard_minutes` still works, since zone times are present. The
-real database remains unable to support §8's rubric; the fixture stays the demo
+real database remains unable to support §8's rubric; the fixture stays the eval
 subject.
 
 ### Phase 5 lands, and the v1 baseline (17 Sep 2026)
@@ -639,4 +651,27 @@ no rows at all and scored sleep stops at 2026-03-02, so readiness questions
 report missing inputs. Bucket A ground truth remains pinned to the fixture --
 `make evals` reads it directly, but an n8n eval run goes through the tools
 server, so the served database must be switched back before running one.
+
+### Worn overnight, synced daily (9 Oct 2026)
+
+From the night of 27–28 Sep the watch is worn every night, and the Connect API
+now returns scored sleep and nightly HRV again — the first since 2026-03-02.
+`scripts/daily_sync.sh`, run by a launchd agent at 11:00 and 21:00, pulls the
+last 30 days, loads `wearable-real.duckdb`, and restarts the tools container.
+The restart is required: the server holds one read-only DuckDB connection
+opened at startup and does not see rows loaded after it.
+
+The agent's prompts fall back to today's date in chat (eval rows still pin
+theirs). Inside the n8n Set node `$json` is the node's input, not the
+`as_of_date` the same node writes, so the fallback has to be repeated in each
+prompt expression.
+
+What this does and does not change: sleep questions now work on real data.
+Readiness still reports HRV as missing until Garmin establishes a baseline
+(about three weeks of consecutive nights), and a night the watch did not record
+— battery, charging, off-wrist — is a data gap, not something a re-pull fixes.
+The fixture remains the eval subject; real data does not enter the eval store.
+
+The demo material that used to live in `docs/` (run-of-show, scripts, slide
+deck) was removed; the project continues as a personal coach.
 

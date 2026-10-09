@@ -12,9 +12,8 @@ Agent's System Message at:
 
     {{ $json.prompt_version === 'v1' ? $json.prompt_v1 : $json.prompt_v2 }}
 
-After that, switching on stage is one word in one field on the canvas — visible
-to the room, which is the whole low-code argument — and this script edits the
-same field, so both routes agree. The eval workflow calls this workflow, so an
+After that, switching is one word in one field on the canvas, and this script
+edits the same field, so both routes agree. The eval workflow calls this workflow, so an
 eval run picks up whichever version the field names.
 
 Each prompt body is stored as an n8n expression, with `{{ $json.as_of_date }}`
@@ -22,8 +21,7 @@ rewritten to `{{ $json.as_of_date || $now.format('yyyy-MM-dd') }}`: an eval run
 passes the row's date in, and a hand-driven chat run has none, so it falls back to
 today. The fallback must be repeated here because `$json` in the Set node is its
 input, not the `as_of_date` the same node writes. The repo-notes under each
-prompt are stripped — they name
-the failures the demo wants to happen.
+prompt are stripped — they name the failures v1 is expected to make.
 
 Reload the n8n tab after switching from here: an open tab saves the old value
 back over it.
@@ -107,8 +105,8 @@ def prompt_body(version: str) -> str:
     lines = [line for line in text.splitlines() if not line.startswith("# Wearable Coach")]
     body = "\n".join(lines).strip()
     if version == "v1":
-        # v1's trailing paragraph lists the failures the demo wants to happen.
-        cut = body.find('This prompt is the "before"')
+        # v1's trailing paragraph lists the failures it is expected to make.
+        cut = body.find("This prompt is the eval baseline")
         if cut != -1:
             body = body[:cut].strip()
     if not body:

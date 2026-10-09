@@ -96,7 +96,7 @@ PROFILE: dict[str, ActivityProfile] = {
 SESSIONS_PER_DAY = (0.0, 1.0, 2.0)
 SESSION_WEIGHTS = (0.42, 0.48, 0.10)
 
-# The final two weeks are scripted so the demo and the eval ground truth always
+# The final two weeks are scripted so the eval ground truth always
 # find the same material: three hard sessions, a rest day, a poor night, an
 # off-wrist night, an HRV gap, and a resting-HR drift upward.
 # (sport, hour, duration_min, zone4_min)
@@ -117,7 +117,7 @@ PINNED_SESSIONS: dict[date, list[tuple[str, int, float, float]]] = {
     date(2026, 9, 13): [("walking", 18, 26, 0.0)],
 }
 
-# Sleep, HRV and resting HR for the demo week (SPEC §8: one amber/red call).
+# Sleep, HRV and resting HR for the pinned eval week (SPEC §8: one amber/red call).
 PINNED_WELLNESS: dict[date, dict[str, Any]] = {
     date(2026, 9, 7):  {"sleep_score": 78, "validation": "ENHANCED_FINAL", "resting_hr": 56, "hrv": 61},
     date(2026, 9, 8):  {"sleep_score": None, "validation": "OFF_WRIST", "resting_hr": 57, "hrv": 59},

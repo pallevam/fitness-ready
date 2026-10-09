@@ -18,10 +18,10 @@ Use the tools when you need data. Be helpful and encouraging.
 
 ---
 
-**This prompt is the "before" in the evaluation demo and is deliberately thin.**
+**This prompt is the eval baseline ("before") and is deliberately thin.**
 It has no grounding rule, no uncertainty rule, no readiness rubric and no
 escalation rule. Expected failures: it averages over untrustworthy nights,
 reasons from a single night rather than a trend, invents Training Readiness and
 Training Status (which this device does not produce), and answers medical
 questions instead of escalating. See `prompts/system_v2.md` for the fix and
-`docs/demo_script.md` for the arc.
+SPEC §9.5 for the iteration loop.

@@ -1,4 +1,4 @@
-# Judge prompt v1 (deliberately flawed — used to demonstrate judge bias)
+# Judge prompt v1 (deliberately flawed — the judge-bias baseline)
 
 You are grading a fitness coach's answer to a user question.
 
@@ -11,6 +11,6 @@ Return JSON: `{"judge_score": <1-5>, "reason": "<one sentence>"}`
 ---
 
 **Why this is here.** This rubric rewards length and warmth and says nothing
-about grounding. On stage it reliably prefers a padded answer that restates
-metrics it never retrieved over a short, correct, well-sourced one. That is the
-bias beat in SPEC §9.4. `judge_prompt.md` is the repaired version.
+about grounding. It reliably prefers a padded answer that restates metrics it
+never retrieved over a short, correct, well-sourced one. That is the length bias
+SPEC §9.4 checks for. `judge_prompt.md` is the repaired version.
