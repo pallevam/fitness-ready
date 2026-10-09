@@ -23,7 +23,7 @@ import sqlite3
 import subprocess
 import tempfile
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -254,6 +254,7 @@ def write_run(conn, run_id: str, cases: list[CaseResult], *, prompt_version: str
         [run_id, min(c.ran_at for c in cases), prompt_version, agent_model, judge_model,
          len(cases), workflow_id, datetime.now(), harness],
     )
+    expected = answer_key_at(expected, min(c.ran_at for c in cases))
     rows = []
     for case in cases:
         scored = rescore(case, expected)
@@ -268,6 +269,30 @@ def write_run(conn, run_id: str, cases: list[CaseResult], *, prompt_version: str
         f"INSERT INTO eval_cases VALUES ({', '.join('?' * 18)})", rows
     )
     return len(rows)
+
+
+def answer_key_at(expected: dict[str, str], ran_at: datetime,
+                  path: Path | None = None) -> dict[str, str]:
+    """The answer key as it stood when a run was made.
+
+    Re-scoring applies today's *metrics* to old answers; it must not apply
+    today's *answers*. When a definition changes (SPEC §6.3's hard session gained
+    a strength arm), the fixture's true value moves, and an agent that was right
+    under the old definition would be re-scored as wrong. Each superseded answer
+    is recorded in `evals/answer_key_history.csv` with the day it was replaced.
+    """
+    import csv
+    path = path or REPO / "evals" / "answer_key_history.csv"
+    if not path.exists():
+        return expected
+    key = dict(expected)
+    with path.open(newline="") as handle:
+        # Oldest replacement wins: a run before two changes saw the first value.
+        rows = sorted(csv.DictReader(handle), key=lambda r: r["replaced_on"], reverse=True)
+    for row in rows:
+        if ran_at.date() < date.fromisoformat(row["replaced_on"]):
+            key[row["case_id"]] = row["expected_answer"]
+    return key
 
 
 def dataset_expected(path: Path | None = None) -> dict[str, str]:

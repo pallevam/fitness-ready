@@ -127,7 +127,7 @@ Loader rules:
 
 ### 6.3 Derived definitions (used by tools and evals; must match exactly)
 
-- **hard session**: any activity with `aerobic_te >= 3.0` OR `anaerobic_te >= 3.0` OR `recovery_time_hours >= 24`. Applies to all activity types, so strength and cycling count.
+- **hard session**: any activity with `aerobic_te >= 3.0` OR `anaerobic_te >= 3.0` OR `recovery_time_hours >= 24` OR `hard_minutes >= 20` (time at or above HR zone 4; added 15 Sep), OR a `strength_training` session of `duration_min >= 50` AND `avg_hr >= 115` (added 9 Oct). Applies to all activity types; the strength arm exists because the watch reports no training effect or recovery time for strength.
 - **resting HR delta**: today's `resting_hr` minus trailing 30-day mean (excluding today).
 - **HRV vs baseline**: `last_night_avg` relative to `[baseline_low, baseline_high]`; also report 7-day mean vs 60-day mean.
 - **sleep is trustworthy**: `validation NOT IN ('OFF_WRIST', 'MANUAL')` AND `total_min > 0`.
@@ -674,4 +674,22 @@ The fixture remains the eval subject; real data does not enter the eval store.
 
 The demo material that used to live in `docs/` (run-of-show, scripts, slide
 deck) was removed; the project continues as a personal coach.
+
+### Strength sessions can be hard (9 Oct 2026)
+
+Strength is 55% of the real sessions, and under §6.3 as it stood 1 of 140 had
+ever counted as hard: the watch reports no training effect or recovery time for
+strength, and lifting rarely holds zone 4 (median 0.75 min). The rule gained a
+strength-only arm, `duration_min >= 50 AND avg_hr >= 115`, calibrated on the
+real history to flag 29 of 140 sessions (21%). 45 min / 110 bpm flagged 41%,
+which is not "hard". Average HR includes rest between sets and wrist HR is noisy
+under load, so this is a proxy.
+
+It changes one fixture answer: A05 (hard sessions in the last 14 days) goes from
+4 to 5. Every stored run answered 4 and was right under the rule it was given,
+so `evals/answer_key_history.csv` records the superseded answer and the store
+scores each run against the key of its own day — today's metrics, the old
+answer. Readiness on the pinned day is unchanged. Strength sessions carry no
+recovery hours, so a hard strength session never fails the Recovery check by
+itself.
 

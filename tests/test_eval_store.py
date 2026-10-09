@@ -207,3 +207,19 @@ def test_reading_an_n8n_sqlite_copy(tmp_path):
     assert {c.case_id for c in everything} == {"A01", "A02"}
     filtered = store.read_n8n_sqlite(path, "WEVAL")
     assert [c.case_id for c in filtered] == ["A01"]
+
+
+def test_a_run_is_scored_against_the_answer_key_of_its_day(tmp_path):
+    """A05 went 4 -> 5 when the hard-session rule changed; old runs said 4 and were right."""
+    history = tmp_path / "history.csv"
+    history.write_text("case_id,expected_answer,replaced_on,reason\nA05,4,2026-10-09,rule change\n")
+    today = {"A05": "5"}
+    before = store.answer_key_at(today, datetime(2026, 9, 17, 22, 30), history)
+    after = store.answer_key_at(today, datetime(2026, 10, 9, 9, 0), history)
+    assert before == {"A05": "4"}
+    assert after == {"A05": "5"}
+
+
+def test_the_committed_history_keeps_published_runs_unchanged():
+    key = store.answer_key_at(store.dataset_expected(), datetime(2026, 9, 20, 18, 0))
+    assert key["A05"] == "4"

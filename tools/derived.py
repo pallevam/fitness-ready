@@ -43,21 +43,41 @@ HARD_SESSION_RECOVERY_HOURS = 24
 # 11% of the real history, concentrated in badminton and running.
 HARD_SESSION_ZONE4_MINUTES = 20.0
 
+# Strength sessions never reach zone 4 for long (median 0.75 min) and the watch
+# reports no training effect or recovery time for them, so under the arms above
+# 1 of 140 real strength sessions counted as hard. A long session at a sustained
+# elevated heart rate is the signal that is left. Calibrated on the real history
+# (140 sessions, Apr 2025 - Oct 2026): 50 min and 115 bpm flag 29 (21%), about
+# the top fifth. 45 / 110 flagged 41%, too loose to mean "hard". Average HR
+# includes rest between sets and wrist HR is noisy under load, so this is a
+# proxy, not a measurement.
+HARD_STRENGTH_TYPE = "strength_training"
+HARD_STRENGTH_MIN_DURATION = 50.0
+HARD_STRENGTH_MIN_AVG_HR = 115
+
 HARD_SESSION_SQL = (
     f"(coalesce(aerobic_te, 0) >= {HARD_SESSION_AEROBIC_TE}"
     f" OR coalesce(anaerobic_te, 0) >= {HARD_SESSION_ANAEROBIC_TE}"
     f" OR coalesce(recovery_time_hours, 0) >= {HARD_SESSION_RECOVERY_HOURS}"
-    f" OR coalesce(hard_minutes, 0) >= {HARD_SESSION_ZONE4_MINUTES})"
+    f" OR coalesce(hard_minutes, 0) >= {HARD_SESSION_ZONE4_MINUTES}"
+    f" OR (type = '{HARD_STRENGTH_TYPE}'"
+    f" AND coalesce(duration_min, 0) >= {HARD_STRENGTH_MIN_DURATION}"
+    f" AND coalesce(avg_hr, 0) >= {HARD_STRENGTH_MIN_AVG_HR}))"
 )
 
 
 def is_hard_session(activity: Mapping[str, Any]) -> bool:
-    """SPEC §6.3. Applies to every activity type, so strength and badminton count."""
+    """SPEC §6.3. Applies to every activity type, plus a strength-only arm."""
     return (
         (activity.get("aerobic_te") or 0) >= HARD_SESSION_AEROBIC_TE
         or (activity.get("anaerobic_te") or 0) >= HARD_SESSION_ANAEROBIC_TE
         or (activity.get("recovery_time_hours") or 0) >= HARD_SESSION_RECOVERY_HOURS
         or (activity.get("hard_minutes") or 0) >= HARD_SESSION_ZONE4_MINUTES
+        or (
+            activity.get("type") == HARD_STRENGTH_TYPE
+            and (activity.get("duration_min") or 0) >= HARD_STRENGTH_MIN_DURATION
+            and (activity.get("avg_hr") or 0) >= HARD_STRENGTH_MIN_AVG_HR
+        )
     )
 
 

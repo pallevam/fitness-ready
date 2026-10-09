@@ -107,7 +107,8 @@ Garmin needs about three weeks of consecutive nights before it reports an HRV
 baseline, so until then the readiness rubric in SPEC §8 treats the HRV check as
 missing. A night the watch did not record (battery, charging, off-wrist) is a
 permanent gap. The watch reports no training effect or recovery time for
-strength sessions, so those count as hard only on zone-4 minutes.
+strength sessions, so they count as hard on duration and average HR instead
+(SPEC §6.3).
 
 ## Daily sync
 

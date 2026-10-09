@@ -3,7 +3,7 @@ A01,A,What's my average resting heart rate over the last 30 days?,2026-09-13,get
 A02,A,"What was my longest run this year, in kilometres?",2026-09-13,list_activities,8.4,tolerance 2%; running activities only
 A03,A,Which nights last week had unreliable sleep data?,2026-09-13,get_sleep,2026-09-08; 2026-09-10,must name every date whose validation is OFF_WRIST or MANUAL; last week = the 7 days ending as_of_date
 A04,A,How many steps did I take in total over the last 7 days?,2026-09-13,get_daily_metrics,43088,tolerance 2%
-A05,A,How many hard sessions did I do in the last 14 days?,2026-09-13,list_activities,4,hard session per SPEC 6.3; exact count
+A05,A,How many hard sessions did I do in the last 14 days?,2026-09-13,list_activities,5,hard session per SPEC 6.3; exact count
 A06,A,"What's my average sleep score over the last 7 nights, ignoring nights the watch didn't trust?",2026-09-13,get_sleep,72.4,excludes OFF_WRIST and MANUAL nights; tolerance 2%
 A07,A,How far below my HRV baseline was last night?,2026-09-13,get_hrv_trend,2,"difference between baseline_low and last_night_avg, in ms"
 A08,A,How much time did I spend playing badminton in the last 30 days?,2026-09-13,list_activities,244,badminton only; total minutes; tolerance 2%

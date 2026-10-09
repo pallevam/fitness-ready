@@ -115,3 +115,22 @@ def test_zone_minutes_arm_of_the_hard_session_rule(activity, expected):
 
 def test_zone_threshold_is_stated_once():
     assert f">= {derived.HARD_SESSION_ZONE4_MINUTES}" in derived.HARD_SESSION_SQL
+
+
+@pytest.mark.parametrize(
+    "activity, expected",
+    [
+        # 8 Oct 2026: 68.75 min at 122 bpm, 10.3 zone-4 minutes. Hard only via this arm.
+        ({"type": "strength_training", "duration_min": 68.75, "avg_hr": 122, "hard_minutes": 10.3}, True),
+        # 7 Oct 2026: long but easy.
+        ({"type": "strength_training", "duration_min": 70.75, "avg_hr": 100}, False),
+        ({"type": "strength_training", "duration_min": 50.0, "avg_hr": 115}, True),
+        ({"type": "strength_training", "duration_min": 49.9, "avg_hr": 130}, False),
+        ({"type": "strength_training", "duration_min": 90.0, "avg_hr": 114}, False),
+        ({"type": "strength_training", "duration_min": None, "avg_hr": None}, False),
+        # Strength only: a long walk at the same heart rate is not hard.
+        ({"type": "walking", "duration_min": 70.0, "avg_hr": 120}, False),
+    ],
+)
+def test_strength_arm_of_the_hard_session_rule(activity, expected):
+    assert derived.is_hard_session(activity) is expected
