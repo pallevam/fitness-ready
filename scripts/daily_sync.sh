@@ -2,11 +2,33 @@
 # Morning Garmin sync, run by launchd (~/Library/LaunchAgents/com.fitness-ready.daily-sync.plist).
 # Pulls the last 30 days (already-final days are reused) into wearable-real.duckdb.
 # launchd starts with a bare environment, so the interpreter path is absolute.
+# It notifies (macOS) when the sync fails or last night's sleep is missing or
+# untrustworthy; a quiet run means all is well.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 PYTHON=/Users/vamsikpalle/.pyenv/versions/3.12.8/bin/python
+LOG=~/Library/Logs/fitness-ready-sync.log
+
+notify() {
+  # $1 title, $2 message. Quotes are stripped so they can't break the AppleScript.
+  /usr/bin/osascript -e "display notification \"${2//\"/}\" with title \"${1//\"/}\"" || true
+}
+
+on_exit() {
+  local code=$?
+  if (( code != 0 )); then
+    notify "Garmin sync failed" "Exit $code. Details in $LOG. An expired Garmin login needs: python -m fetcher.pull in a terminal."
+    echo "=== $(date '+%F %T') sync FAILED (exit $code)"
+  fi
+}
+trap on_exit EXIT
+
 echo "=== $(date '+%F %T') sync start"
 $PYTHON -m fetcher.pull
 $PYTHON -m loader.load_garmin raw/api --db wearable-real.duckdb
 $PYTHON -c "import duckdb; c=duckdb.connect('wearable-real.duckdb', read_only=True); print('latest sleep:', c.execute('select date, total_min, sleep_score from sleep order by date desc limit 1').fetchone())"
+if ! problem=$($PYTHON -m fetcher.check --db wearable-real.duckdb); then
+  echo "check: $problem"
+  notify "Last night's sleep" "$problem"
+fi
 echo "=== $(date '+%F %T') sync done"

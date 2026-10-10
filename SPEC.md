@@ -664,6 +664,10 @@ which never sees rows loaded after it, so the sync restarted the container. A
 stack that was down during a sync then served stale rows silently. Since 10 Oct
 it opens a connection per request (about 3 ms) and the restart is gone.
 
+The sync also notifies when it fails or when last night's sleep is missing or
+recorded off-wrist or manual (`fetcher/check.py`). The night of 4–5 Oct went
+unnoticed for four days; now it would have shown up at 11:00 that morning.
+
 The agent's prompts fall back to today's date in chat (eval rows still pin
 theirs). Inside the n8n Set node `$json` is the node's input, not the
 `as_of_date` the same node writes, so the fallback has to be repeated in each

@@ -123,6 +123,12 @@ tail ~/Library/Logs/fitness-ready-sync.log
 launchctl bootout gui/$(id -u)/com.fitness-ready.daily-sync     # remove it
 ```
 
+It stays quiet when all is well. It posts a macOS notification when the sync
+fails (most often an expired Garmin login: run `python -m fetcher.pull` in a
+terminal) or when last night's sleep is missing or untrustworthy
+(`python -m fetcher.check`). Notifications come from Script Editor, so allow
+those in System Settings → Notifications.
+
 The plist lives at `~/Library/LaunchAgents/com.fitness-ready.daily-sync.plist`,
 outside the repo. Garmin only has what the phone has uploaded: open Garmin
 Connect after waking, or the night is not there to pull.
