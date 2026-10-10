@@ -160,3 +160,42 @@ def test_hrv_days_bound_matches_the_range_cap(client):
     assert client.get(
         "/tools/get_hrv_trend", params={"days": MAX_RANGE_DAYS + 1, "as_of": AS_OF}
     ).status_code == 422
+
+
+def test_rows_loaded_after_startup_are_served_without_a_restart(
+    db_file, tmp_path, monkeypatch
+):
+    """A daily load must reach the agent with the server still running."""
+    import shutil
+
+    from fastapi.testclient import TestClient
+
+    from db import connect
+    from tools.server import app
+
+    copy = tmp_path / "live.duckdb"
+    shutil.copy(db_file, copy)
+    monkeypatch.setenv("WEARABLE_DB", str(copy))
+    with TestClient(app) as client:
+        before = client.get("/health").json()
+        assert before["latest_date"] == AS_OF
+        with connect(copy) as writer:
+            writer.execute(
+                "INSERT INTO daily (date) SELECT max(date) + 1 FROM daily"
+            )
+        after = client.get("/health").json()
+    assert after["latest_date"] == "2026-09-14"
+    assert after["rows"]["daily"] == before["rows"]["daily"] + 1
+
+
+def test_missing_database_is_a_503_the_agent_can_read(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    import tools.server as server
+
+    monkeypatch.setenv("WEARABLE_DB", str(tmp_path / "absent.duckdb"))
+    monkeypatch.setattr(server, "OPEN_RETRY_DELAY_S", 0)
+    with TestClient(server.app) as client:
+        response = client.get("/health")
+    assert response.status_code == 503
+    assert "do not retry" in response.json()["detail"]

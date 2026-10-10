@@ -10,7 +10,8 @@ free-form SQL endpoint in Phase 1 (SPEC §11 open decision 1): named tools make
 from __future__ import annotations
 
 import os
-from contextlib import asynccontextmanager
+import time
+from collections.abc import Iterator
 from datetime import date, timedelta
 from typing import Any
 
@@ -21,37 +22,44 @@ from db import connect, db_path
 from tools import queries
 from tools.derived import MAX_RANGE_DAYS
 
-_connection: duckdb.DuckDBPyConnection | None = None
+# Retries for a request that lands while the loader is checkpointing the file.
+OPEN_ATTEMPTS = 3
+OPEN_RETRY_DELAY_S = 0.5
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """One read-only connection for the process; each request gets its own cursor."""
-    global _connection
-    _connection = connect(read_only=True)
+def get_conn() -> Iterator[duckdb.DuckDBPyConnection]:
+    """A fresh read-only connection per request, closed when the request ends.
+
+    The server used to hold one connection from startup, and DuckDB never
+    re-reads a file it already has open, so every daily load needed a container
+    restart, and a stack that was down during the sync served stale rows with no
+    warning. Opening costs about 3 ms. Once the last connection closes DuckDB
+    drops its cached instance, so the next request reads the file as it is now.
+    """
+    for attempt in range(1, OPEN_ATTEMPTS + 1):
+        try:
+            conn = connect(read_only=True)
+            break
+        except (duckdb.Error, FileNotFoundError):
+            if attempt == OPEN_ATTEMPTS:
+                raise HTTPException(
+                    status_code=503,
+                    detail="The database could not be opened. This is a server problem, not a "
+                           "bad request: do not retry this call, and tell the user the data is "
+                           "unavailable.",
+                )
+            time.sleep(OPEN_RETRY_DELAY_S)
     try:
-        yield
+        yield conn
     finally:
-        _connection.close()
-        _connection = None
+        conn.close()
 
 
 app = FastAPI(
     title="Wearable Coach tools",
     version="0.1.0",
     summary="Named, read-only tools over a Garmin-derived DuckDB.",
-    lifespan=lifespan,
 )
-
-
-def get_conn() -> duckdb.DuckDBPyConnection:
-    if _connection is None:  # pragma: no cover - only if lifespan didn't run
-        raise HTTPException(
-            status_code=503,
-            detail="The database is not open yet. This is a server problem, not a bad "
-                   "request: do not retry this call, and tell the user the data is unavailable.",
-        )
-    return _connection.cursor()
 
 
 def _validate_range(start_date: date, end_date: date) -> None:

@@ -113,9 +113,9 @@ strength sessions, so they count as hard on duration and average HR instead
 ## Daily sync
 
 `scripts/daily_sync.sh` pulls the last 30 days from the Connect API, loads
-`wearable-real.duckdb`, and restarts the tools container. The restart matters:
-the server keeps one database connection from startup and will not see new
-rows otherwise. A launchd agent runs it at 11:00 and 21:00:
+`wearable-real.duckdb`. The tools server opens the database per request, so new
+rows reach the agent without a restart. A launchd agent runs it at 11:00 and
+21:00:
 
 ```bash
 launchctl kickstart gui/$(id -u)/com.fitness-ready.daily-sync   # run it now

@@ -252,7 +252,7 @@ fitness-ready/
     workflow_*.json        # exported workflows
   litellm/config.yaml      # model routing, fallbacks, Langfuse callbacks
   scripts/
-    daily_sync.sh          # pull + load + restart tools (run by launchd)
+    daily_sync.sh          # pull + load (run by launchd)
     set_prompt.py, load_eval_dataset.py, rejudge_calibration.py
   notebooks/eval_dashboard.py
   tests/
@@ -657,9 +657,12 @@ server, so the served database must be switched back before running one.
 From the night of 27–28 Sep the watch is worn every night, and the Connect API
 now returns scored sleep and nightly HRV again — the first since 2026-03-02.
 `scripts/daily_sync.sh`, run by a launchd agent at 11:00 and 21:00, pulls the
-last 30 days, loads `wearable-real.duckdb`, and restarts the tools container.
-The restart is required: the server holds one read-only DuckDB connection
-opened at startup and does not see rows loaded after it.
+last 30 days and loads `wearable-real.duckdb`.
+
+The tools server used to hold one read-only DuckDB connection from startup,
+which never sees rows loaded after it, so the sync restarted the container. A
+stack that was down during a sync then served stale rows silently. Since 10 Oct
+it opens a connection per request (about 3 ms) and the restart is gone.
 
 The agent's prompts fall back to today's date in chat (eval rows still pin
 theirs). Inside the n8n Set node `$json` is the node's input, not the
