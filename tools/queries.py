@@ -274,6 +274,7 @@ def get_readiness_inputs(conn: duckdb.DuckDBPyConnection, as_of: date | None = N
     return {
         "date": as_of.isoformat(),
         "reference_time": reference.isoformat(sep=" ", timespec="minutes"),
+        "verdict": derived.readiness_verdict(sleep, hrv, resting, last_hard),
         "sleep": sleep,
         "hrv": hrv,
         "resting_hr": resting,

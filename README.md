@@ -15,7 +15,7 @@ loader/    Garmin export or API pull -> DuckDB
 fetcher/   Garmin Connect API client and daily pull
 tools/     five named HTTP tools the agent calls
 evals/     dataset, ground truth, metrics, judge, run store
-prompts/   system_v1 (baseline) and v2
+prompts/   system_v1 (baseline), v2, v3 (live: reports the tool's verdict)
 n8n/       build sheet and exported workflows
 litellm/   model routing and Langfuse tracing
 scripts/   daily sync, prompt switching, dataset loading
@@ -153,6 +153,15 @@ make eval-summary
 python -m evals.store compare v1 v2
 ```
 
+A local run (`python -m evals.run_local`) needs a tools server on the fixture,
+and refuses to start against one serving real data:
+
+```bash
+WEARABLE_DB=wearable.duckdb uvicorn tools.server:app --port 8001 &
+python -m evals.run_local --prompt v3 --tools-url http://localhost:8001
+python -m evals.store rescore     # re-apply today's metrics to every stored answer
+```
+
 Query it live, in a terminal or a browser:
 
 ```bash
@@ -186,6 +195,8 @@ metric fix does not make old runs incomparable. `make clean` leaves it alone.
   `as_of_date`, so "hours since the last hard session" must not move with the
   wall clock.
 - **No Training Readiness or Training Status.** The vivoactive 5 does not
-  produce them. The agent reconstructs a readiness call from raw inputs with a
-  visible rubric, which is also what makes it evaluable.
+  produce them. `get_readiness_inputs` reconstructs a Green/Amber/Red verdict
+  from raw inputs with a visible rubric (`tools/derived.py`), and the agent
+  reports it. The model used to apply the rubric itself and got the colour
+  wrong in 9 of 12 stored v2 answers.
 - **Not medical advice.** Red-flag inputs are escalated, not answered.

@@ -3,6 +3,7 @@
     python -m evals.store collect            # pull finished runs out of n8n
     python -m evals.store summary            # one line per run
     python -m evals.store compare v1 v2      # metric deltas between two runs
+    python -m evals.store rescore            # re-apply today's metrics to stored answers
 
 Results live in their own database (`evals.duckdb`, `$EVAL_DB` to override), not
 in `wearable.duckdb`: the tools server holds that file open, and eval output must
@@ -68,6 +69,7 @@ CREATE TABLE IF NOT EXISTS eval_cases (
   judge_failed VARCHAR,
   contained INT,
   latency_s DOUBLE,
+  verdict_match INT,               -- bucket B cases with an expected colour
   PRIMARY KEY (run_id, case_id)
 );
 """
@@ -100,6 +102,11 @@ def migrate(conn) -> None:
     if "harness" not in columns:
         conn.execute("ALTER TABLE eval_runs ADD COLUMN harness VARCHAR DEFAULT 'canvas'")
     conn.execute("UPDATE eval_runs SET harness = 'canvas' WHERE harness IS NULL")
+    # `verdict_match` arrived with the tool-computed verdict (10 Oct). Old rows
+    # get it on their next reload, which re-scores stored answers.
+    cases = {row[1] for row in conn.execute("PRAGMA table_info('eval_cases')").fetchall()}
+    if "verdict_match" not in cases:
+        conn.execute("ALTER TABLE eval_cases ADD COLUMN verdict_match INT")
 
 
 def ensure_schema(path: str | os.PathLike[str] | None = None) -> None:
@@ -240,6 +247,7 @@ def rescore(case: CaseResult, expected: dict[str, str]) -> dict[str, Any]:
     return {
         "value_match": metrics.value_match(want, case.answer) if case.bucket == "A" else None,
         "contained": metrics.contained(want, case.answer) if case.bucket == "C" else None,
+        "verdict_match": metrics.verdict_match(want, case.answer) if case.bucket == "B" else None,
         "words": metrics.judge_length_words(case.answer),
     }
 
@@ -263,12 +271,47 @@ def write_run(conn, run_id: str, cases: list[CaseResult], *, prompt_version: str
             expected.get(case.case_id, case.expected_answer), ",".join(case.tools_called),
             len(case.tools_called), case.answer, scored["words"], case.tool_correct,
             scored["value_match"], case.judge_score, case.judge_score_raw, case.judge_failed,
-            scored["contained"], case.latency_s,
+            scored["contained"], case.latency_s, scored["verdict_match"],
         ])
     conn.executemany(
-        f"INSERT INTO eval_cases VALUES ({', '.join('?' * 18)})", rows
+        f"INSERT INTO eval_cases VALUES ({', '.join('?' * 19)})", rows
     )
     return len(rows)
+
+
+def rescore_stored(conn) -> int:
+    """Re-apply today's metrics to every stored answer, without n8n.
+
+    `collect` re-scores on load, but only runs n8n still holds; this works from
+    the answers already in the store, so a new metric reaches every old run.
+    """
+    expected_now = dataset_expected()
+    runs = conn.execute("SELECT run_id, ran_at FROM eval_runs").fetchall()
+    updated = 0
+    for run_id, ran_at in runs:
+        expected = answer_key_at(expected_now, ran_at)
+        cases = conn.execute(
+            "SELECT case_id, bucket, answer, expected_answer FROM eval_cases WHERE run_id = ?",
+            [run_id],
+        ).fetchall()
+        for case_id, bucket, answer, stored_expected in cases:
+            want = expected.get(case_id, stored_expected)
+            scored = rescore(
+                CaseResult(case_id=case_id, bucket=bucket, ran_at=ran_at, question="",
+                           expected_tool="", expected_answer=want, tools_called=[],
+                           answer=answer or "", tool_correct=None, value_match=None,
+                           judge_score=None, judge_score_raw=None, judge_failed="",
+                           latency_s=None),
+                expected,
+            )
+            conn.execute(
+                "UPDATE eval_cases SET expected_answer = ?, value_match = ?, contained = ?, "
+                "words = ?, verdict_match = ? WHERE run_id = ? AND case_id = ?",
+                [want, scored["value_match"], scored["contained"], scored["words"],
+                 scored["verdict_match"], run_id, case_id],
+            )
+            updated += 1
+    return updated
 
 
 def answer_key_at(expected: dict[str, str], ran_at: datetime,
@@ -310,6 +353,7 @@ SELECT r.run_id, r.ran_at, r.prompt_version AS prompt, r.harness, r.judge_model 
        count(*) FILTER (c.bucket = 'A' AND c.value_match = 1) AS value_ok,
        round(avg(c.judge_score) FILTER (c.bucket = 'B'), 2) AS judge_mean,
        round(avg(c.words) FILTER (c.bucket = 'B')) AS words_mean,
+       count(*) FILTER (c.verdict_match = 1) || '/' || count(c.verdict_match) AS verdict_ok,
        count(*) FILTER (c.bucket = 'C' AND c.contained = 1) AS contained,
        sum(c.tool_count) FILTER (c.bucket = 'C' AND c.expected_answer = 'escalate') AS clinical_tool_calls,
        round(avg(c.latency_s), 1) AS latency_s
@@ -332,6 +376,9 @@ def main() -> int:
                               "runs are numbered in time order")
     collect.add_argument("--agent-model", default="claude-sonnet-5")
     collect.add_argument("--judge-model", default="gpt-5.1")
+
+    rescore_cmd = sub.add_parser("rescore", help="re-apply today's metrics to stored answers")
+    rescore_cmd.add_argument("--db", default=None)
 
     for name in ("summary",):
         p = sub.add_parser(name, help="one row per run")
@@ -445,6 +492,11 @@ def main() -> int:
             print("  ".join(v.ljust(w) for v, w in zip(values, (22, 7, 4, 3, 3, 3, 3, 7, 10, 6, 6, 10, 11, 18))))
         return 0
 
+    if args.command == "rescore":
+        with connect(args.db) as conn:
+            print(f"re-scored {rescore_stored(conn)} stored cases")
+        return 0
+
     if args.command == "summary":
         ensure_schema(args.db)
         with connect(args.db, read_only=True) as conn:
@@ -467,6 +519,7 @@ def main() -> int:
                    count(*) FILTER (bucket = 'A' AND value_match = 1) AS value_ok,
                    round(avg(judge_score) FILTER (bucket = 'B'), 2) AS judge_mean,
                    round(avg(words) FILTER (bucket = 'B')) AS words_mean,
+                   count(*) FILTER (verdict_match = 1) || '/' || count(verdict_match) AS verdict_ok,
                    count(*) FILTER (bucket = 'C' AND contained = 1) AS contained,
                    sum(tool_count) FILTER (bucket = 'C' AND expected_answer = 'escalate') AS clinical_tools
             FROM sides WHERE side IS NOT NULL GROUP BY side ORDER BY side DESC

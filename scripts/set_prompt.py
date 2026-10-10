@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-"""Switch the live agent between prompt v1 and v2 — from the canvas, or here.
+"""Switch the live agent between prompt versions — from the canvas, or here.
 
-    python3 scripts/set_prompt.py --install   # put both prompts on the canvas (once)
+    python3 scripts/set_prompt.py --install   # put every prompt on the canvas (once)
     python3 scripts/set_prompt.py --show      # which one is live right now
     python3 scripts/set_prompt.py v1          # the naive baseline
-    python3 scripts/set_prompt.py v2          # the fixed prompt
+    python3 scripts/set_prompt.py v2          # rubric in the prompt
+    python3 scripts/set_prompt.py v3          # verdict computed by the tool
 
-`--install` moves both prompt bodies into the **Edit Fields** node as
-`prompt_v1` and `prompt_v2`, adds a `prompt_version` field, and points the AI
+`--install` moves every prompt body into the **Edit Fields** node as
+`prompt_v1`, `prompt_v2`, ..., adds a `prompt_version` field, and points the AI
 Agent's System Message at:
 
-    {{ $json.prompt_version === 'v1' ? $json.prompt_v1 : $json.prompt_v2 }}
+    {{ $json['prompt_' + $json.prompt_version] }}
 
 After that, switching is one word in one field on the canvas, and this script
 edits the same field, so both routes agree. The eval workflow calls this workflow, so an
@@ -42,8 +43,16 @@ WORKFLOW = "workflow_agent"
 CONTAINER_PATH = "/tmp/agent_prompt_switch.json"
 SET_NODE = "Edit Fields"
 FALLBACK_DATE = "$now.format('yyyy-MM-dd')"
-SELECTOR = "={{ $json.prompt_version === 'v1' ? $json.prompt_v1 : $json.prompt_v2 }}"
-MARKERS = {"v1": "Be helpful and encouraging", "v2": "One action, one sentence"}
+VERSIONS = ("v1", "v2", "v3")
+SELECTOR = "={{ $json['prompt_' + $json.prompt_version] }}"
+# The two-way selector from before v3; still recognised, replaced on any write.
+OLD_SELECTOR = "={{ $json.prompt_version === 'v1' ? $json.prompt_v1 : $json.prompt_v2 }}"
+# Checked in order: v3 keeps v2's rules, so its own marker must be tried first.
+MARKERS = {
+    "v3": "Report it; do not recompute it",
+    "v1": "Be helpful and encouraging",
+    "v2": "One action, one sentence",
+}
 
 
 def compose(*args: str) -> str:
@@ -118,7 +127,7 @@ def prompt_body(version: str) -> str:
 
 def installed(workflow: dict) -> bool:
     agent = agent_node(workflow)
-    return agent["parameters"]["options"].get("systemMessage", "").strip() == SELECTOR
+    return agent["parameters"]["options"].get("systemMessage", "").strip() in (SELECTOR, OLD_SELECTOR)
 
 
 def live_version(workflow: dict) -> str:
@@ -149,7 +158,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("version", nargs="?", choices=("v1", "v2"))
+    parser.add_argument("version", nargs="?", choices=VERSIONS)
     parser.add_argument("--show", action="store_true", help="print the live prompt version and exit")
     parser.add_argument("--install", action="store_true",
                         help="move both prompts onto the canvas so the switch is a field")
@@ -166,21 +175,23 @@ def main() -> int:
     set_node = node_named(workflow, SET_NODE)
     agent = agent_node(workflow)
 
-    if args.install:
-        put_field(set_node, "prompt_v1", "=" + prompt_body("v1"))
-        put_field(set_node, "prompt_v2", "=" + prompt_body("v2"))
-        if field(set_node, "prompt_version") is None:
-            put_field(set_node, "prompt_version", live_version(workflow) if
-                      live_version(workflow) in ("v1", "v2") else "v2")
+    def put_prompts() -> None:
+        for version in VERSIONS:
+            put_field(set_node, f"prompt_{version}", "=" + prompt_body(version))
         agent["parameters"]["options"]["systemMessage"] = SELECTOR
+
+    if args.install:
+        current = live_version(workflow)
+        put_prompts()
+        if field(set_node, "prompt_version") is None:
+            put_field(set_node, "prompt_version", current if current in VERSIONS else "v2")
 
     if args.version:
         if not installed(workflow) and not args.install:
             # Old wiring: keep writing the System Message directly.
             agent["parameters"]["options"]["systemMessage"] = "=" + prompt_body(args.version)
         else:
-            put_field(set_node, "prompt_v1", "=" + prompt_body("v1"))
-            put_field(set_node, "prompt_v2", "=" + prompt_body("v2"))
+            put_prompts()
             put_field(set_node, "prompt_version", args.version)
 
     push(workflow)

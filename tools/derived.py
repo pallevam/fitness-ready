@@ -1,7 +1,7 @@
 """Derived definitions from SPEC §6.3.
 
 These are the single source of truth for "hard session", "resting HR delta",
-"HRV vs baseline" and "sleep is trustworthy". The tools server, the eval ground
+"HRV vs baseline", "sleep is trustworthy" and the readiness verdict. The tools server, the eval ground
 truth and the tests all import from here, so a definition can only change in one
 place. Each rule is expressed twice -- once as a SQL fragment for DuckDB, once as
 a Python predicate for row-level use -- and the tests assert the two agree.
@@ -116,6 +116,102 @@ def hrv_vs_baseline(
     if last_night_avg > baseline_high:
         return "above"
     return "within"
+
+
+# --- readiness verdict (SPEC §8) -------------------------------------------
+# The Green/Amber/Red rubric used to live only in the prompt, so the same inputs
+# could come back a different colour on a different run. It is computed here
+# and returned by `get_readiness_inputs`; the agent reports it, not derives it.
+READINESS_SLEEP_SCORE_MIN = 70
+READINESS_RESTING_HR_DELTA_MAX = 3.0
+READINESS_MAX_MISSING = 1  # more missing checks than this -> insufficient_data
+
+
+def readiness_verdict(
+    sleep: Mapping[str, Any],
+    hrv: Mapping[str, Any],
+    resting_hr: Mapping[str, Any],
+    last_hard_session: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Score the four readiness checks and the colour they add up to.
+
+    Each check passes, fails, or is missing. A missing input is not a failure:
+    the watch reports no HRV baseline for its first weeks of overnight wear, and
+    counting that as a failed check made every such day Amber at best. Instead,
+    one missing check leaves the colour to the other three, and two or more give
+    `insufficient_data`. Untrustworthy sleep is a failure, not missing data: the
+    night happened and was recorded badly. Red is two or more failures; the old
+    "untrustworthy sleep plus any miss" clause is the same thing.
+    """
+    checks: list[dict[str, Any]] = []
+
+    def check(name: str, result: str, value: str, rule: str) -> None:
+        checks.append({"name": name, "result": result, "value": value, "rule": rule})
+
+    sleep_rule = f"trustworthy and score >= {READINESS_SLEEP_SCORE_MIN}"
+    if sleep.get("validation") is None and not sleep.get("total_min"):
+        check("sleep", "missing", "no sleep recorded", sleep_rule)
+    elif not sleep.get("trustworthy"):
+        check("sleep", "fail", f"untrustworthy ({sleep.get('validation')})", sleep_rule)
+    elif sleep.get("score") is None:
+        check("sleep", "missing", "no sleep score", sleep_rule)
+    else:
+        result = "pass" if sleep["score"] >= READINESS_SLEEP_SCORE_MIN else "fail"
+        check("sleep", result, f"score {sleep['score']}", sleep_rule)
+
+    hrv_rule = "last night inside the baseline band"
+    position = hrv_vs_baseline(
+        hrv.get("last_night_avg"), hrv.get("baseline_low"), hrv.get("baseline_high")
+    )
+    if position == "unknown":
+        why = "no HRV last night" if hrv.get("last_night_avg") is None else "no baseline yet"
+        check("hrv", "missing", why, hrv_rule)
+    else:
+        check(
+            "hrv",
+            "pass" if position == "within" else "fail",
+            f"{hrv['last_night_avg']} ms, {position} "
+            f"{hrv['baseline_low']}-{hrv['baseline_high']}",
+            hrv_rule,
+        )
+
+    rhr_rule = f"delta <= +{READINESS_RESTING_HR_DELTA_MAX:g} bpm vs the 30-day mean"
+    delta = resting_hr.get("delta")
+    if delta is None:
+        check("resting_hr", "missing", "no resting HR or no baseline", rhr_rule)
+    else:
+        result = "pass" if delta <= READINESS_RESTING_HR_DELTA_MAX else "fail"
+        check("resting_hr", result, f"{delta:+g} bpm", rhr_rule)
+
+    recovery_rule = "no recovery time remaining from the last hard session"
+    if last_hard_session is None:
+        check("recovery", "pass", "no hard session on record", recovery_rule)
+    else:
+        remaining = last_hard_session.get("recovery_remaining_hours") or 0
+        check(
+            "recovery",
+            "pass" if remaining == 0 else "fail",
+            f"{remaining} h remaining",
+            recovery_rule,
+        )
+
+    failed = [c["name"] for c in checks if c["result"] == "fail"]
+    missing = [c["name"] for c in checks if c["result"] == "missing"]
+    if len(missing) > READINESS_MAX_MISSING:
+        colour = "insufficient_data"
+    elif len(failed) >= 2:
+        colour = "red"
+    elif len(failed) == 1:
+        colour = "amber"
+    else:
+        colour = "green"
+    return {
+        "colour": colour,
+        "failed": failed,
+        "missing": missing,
+        "based_on": f"{len(checks) - len(missing)} of {len(checks)} checks",
+        "checks": checks,
+    }
 
 
 # --- helpers shared by the tool endpoints ----------------------------------

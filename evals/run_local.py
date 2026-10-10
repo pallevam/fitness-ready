@@ -438,14 +438,38 @@ def read_dataset(path: Path | None = None) -> list[dict[str, str]]:
         return list(csv.DictReader(handle))
 
 
+def fixture_problem(tools_url: str, cases: list[dict[str, str]],
+                    transport: Callable[..., tuple[int, Any, dict[str, str]]] = http_json) -> str | None:
+    """Why this tools server can't be scored against the answer key, or None.
+
+    The answer key is computed from the fixture, whose last day is every case's
+    as-of date. A server on real data has later days, and scoring against it
+    gives confident nonsense, so the run refuses to start.
+    """
+    status, body, _ = transport(f"{tools_url}/health")
+    if status >= 300 or not isinstance(body, dict):
+        return f"tools server at {tools_url} is not answering /health"
+    pinned = {case["as_of_date"] for case in cases}
+    if body.get("latest_date") not in pinned:
+        return (
+            f"tools server at {tools_url} ends on {body.get('latest_date')}, not the fixture's "
+            f"{', '.join(sorted(pinned))}: it is serving real data. Start one on the fixture "
+            "(WEARABLE_DB=wearable.duckdb uvicorn tools.server:app --port 8001) and pass "
+            "--tools-url http://localhost:8001."
+        )
+    return None
+
+
 # ------------------------------------------------------------------ one run
 
 def run_once(version: str, cases: list[dict[str, str]], chat: Chat, *,
              agent_model: str = AGENT_MODEL, judge_model: str = JUDGE_MODEL,
              tool_caller: Callable[[str, dict[str, Any]], str] | None = None,
              judge: Callable[..., tuple[int | None, float | None, str]] | None = None,
-             echo: Callable[[str], None] = print) -> list[store.CaseResult]:
+             echo: Callable[[str], None] = print,
+             tools_url: str = TOOLS_URL) -> list[store.CaseResult]:
     judge = judge or judge_case
+    tool_caller = tool_caller or (lambda name, args: call_tool(name, args, base_url=tools_url))
     results: list[store.CaseResult] = []
     for index, row in enumerate(cases, start=1):
         case = dict(row, _prompt_version=version)
@@ -493,7 +517,10 @@ def langfuse_session_cost(session_id: str) -> float | None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--prompt", choices=("v1", "v2"), required=True)
+    parser.add_argument("--prompt", choices=("v1", "v2", "v3"), required=True)
+    parser.add_argument("--tools-url", default=TOOLS_URL,
+                        help="a tools server on the fixture, e.g. http://localhost:8001 while "
+                             "the main one serves real data")
     parser.add_argument("--runs", type=int, default=1, help="how many times to run the set")
     parser.add_argument("--limit", type=int, default=None, help="only the first N cases (smoke test)")
     parser.add_argument("--agent-model", default=AGENT_MODEL)
@@ -521,6 +548,11 @@ def main(argv: list[str] | None = None) -> int:
         print("LITELLM_MASTER_KEY is not set (put it in .env)", file=sys.stderr)
         return 2
 
+    problem = fixture_problem(args.tools_url, cases)
+    if problem:
+        print(problem, file=sys.stderr)
+        return 2
+
     spend = Spend(budget=args.budget)
     expected = store.dataset_expected()
     exit_code = 0
@@ -534,7 +566,7 @@ def main(argv: list[str] | None = None) -> int:
               f"agent={args.agent_model} judge={args.judge_model} session={session}")
         try:
             results = run_once(args.prompt, cases, chat, agent_model=args.agent_model,
-                               judge_model=args.judge_model)
+                               judge_model=args.judge_model, tools_url=args.tools_url)
         except BudgetExceeded as error:
             print(f"\nSTOPPED: {error}", file=sys.stderr)
             return 3

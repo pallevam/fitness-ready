@@ -114,6 +114,30 @@ def escalated(answer: str) -> int:
     return int(hands_off and not still_coaching)
 
 
+# Readiness colours as the agent writes them. "insufficient" stands for
+# insufficient_data, however it is phrased.
+VERDICT_COLOURS = ("green", "amber", "red", "insufficient")
+_VERDICT_PATTERN = re.compile(r"\b(green|amber|red|insufficient)\b", re.IGNORECASE)
+
+
+def stated_verdict(answer: str) -> str | None:
+    """The first readiness colour the answer names, or None if it names none."""
+    found = _VERDICT_PATTERN.search(answer or "")
+    return found.group(1).lower() if found else None
+
+
+def verdict_match(expected: Any, answer: str) -> int | None:
+    """1 if the answer's readiness colour is the tool's verdict (bucket B, today).
+
+    None when the case carries no expected verdict. The first colour named is the
+    one that counts: "Red, though it would be Green after a good night" is Red.
+    """
+    wanted = str(expected or "").strip().lower().replace("insufficient_data", "insufficient")
+    if wanted not in VERDICT_COLOURS:
+        return None
+    return int(stated_verdict(answer) == wanted)
+
+
 def judge_length_words(answer: str) -> int:
     """Recorded alongside judge_score to expose the judge's length bias (SPEC §9.4)."""
     return len((answer or "").split())

@@ -1,10 +1,12 @@
-"""Bucket A ground truth, computed from DuckDB (SPEC §9.1, §9.2).
+"""Ground truth, computed from DuckDB (SPEC §9.1, §9.2).
 
     python -m evals.ground_truth            # print what the answers should be
     python -m evals.ground_truth --write    # fill expected_answer in dataset.csv
 
-Each deterministic case has one function here, keyed by case id, so the sheet
-column stays derived rather than hand-typed. `as_of_date` from the dataset pins
+Each bucket A case has one function here, keyed by case id, so the sheet
+column stays derived rather than hand-typed. Three bucket B cases also carry the
+readiness verdict for the as-of day, scored by `metrics.verdict_match`; the
+judge never sees `expected_answer`. `as_of_date` from the dataset pins
 the agent's "today", which is what makes these answers stable over time.
 """
 
@@ -156,6 +158,18 @@ def hrv_gap_days_30d(conn, as_of):
         _window(as_of, 30),
     ))
     return 30 - recorded
+
+
+# ------------------------------------------- bucket B: today's readiness verdict
+# Only the cases that ask about the as-of day itself. "Tomorrow" and "this
+# weekend" depend on nights not yet slept, so they have no colour to match.
+
+def _todays_verdict(conn, as_of):
+    return queries.get_readiness_inputs(conn, as_of)["verdict"]["colour"]
+
+
+for _case in ("B03", "B07", "B09"):
+    truth(_case)(_todays_verdict)
 
 
 # ----------------------------------------------------------------- dataset io

@@ -177,7 +177,7 @@ System prompt principles (the prompt itself is versioned in Langfuse; these are 
 5. **Escalate, don't coach, on red flags.** Chest pain, fainting, resting HR spike with symptoms, medication questions, anything clinical → say this is outside scope and recommend a clinician. Do not soften with a workout suggestion.
 6. **Stay in scope.** Off-topic questions get a short redirect, not an answer.
 
-Readiness heuristic (the reconstruction of what the watch doesn't provide): a simple rubric the prompt uses, not a model. Green if sleep trustworthy and ≥70, HRV within baseline, resting HR delta ≤ +3, recovery remaining 0. Amber on one miss. Red on two or more, or any untrustworthy sleep plus a miss. The heuristic is intentionally visible so it can be evaluated and iterated on.
+Readiness heuristic (the reconstruction of what the watch doesn't provide): a simple rubric, not a model. Green if sleep trustworthy and ≥70, HRV within baseline, resting HR delta ≤ +3, recovery remaining 0. Amber on one failed check. Red on two or more. A missing input is not a failed check: one missing check leaves the colour to the other three, two or more give `insufficient_data`. Since 10 Oct the tool computes it (`verdict` in `get_readiness_inputs`, `tools/derived.readiness_verdict`) and prompt v3 reports it; v1 and v2 had the model apply it. The heuristic is intentionally visible so it can be evaluated and iterated on.
 
 ## 9. Evaluation design
 
@@ -246,7 +246,7 @@ fitness-ready/
     results/               # committed CSVs of every stored run
     calibration/           # judge-vs-human calibration set
   prompts/
-    system_v1.md, system_v2.md
+    system_v1.md, system_v2.md, system_v3.md
   n8n/
     README.md              # build sheet for both workflows
     workflow_*.json        # exported workflows
@@ -699,4 +699,33 @@ scores each run against the key of its own day — today's metrics, the old
 answer. Readiness on the pinned day is unchanged. Strength sessions carry no
 recovery hours, so a hard strength session never fails the Recovery check by
 itself.
+
+### The readiness verdict moves into the tool (10 Oct 2026)
+
+`get_readiness_inputs` now returns `verdict`: a colour, the failed and missing
+checks, `based_on` ("3 of 4 checks") and each check's value and rule. Prompt v3
+is v2 with the rubric table replaced by "report it; do not recompute it". The
+live agent runs v3.
+
+Two reasons. First, v2 applied its own rubric wrong. Re-scoring the stored runs
+with the new `verdict_match` metric (B03, B07 and B09 ask about the as-of day,
+whose fixture verdict is Red) gives v2 3 of 12. The typical miss is "**Amber —
+three checks fail**", where the colour contradicts the count in the same sentence.
+v3 scored 3 of 3 in one local run. Second, v2 counted a missing input as a
+failed check. On real data Garmin has no HRV baseline yet, so every day was
+Amber at best. Now a missing check is reported as missing. One missing check
+leaves the colour to the other three; two or more give `insufficient_data`,
+which is what 5 Oct (no sleep, no HRV) now returns instead of a false Red.
+
+On the fixture's pinned day nothing is missing and the colour is Red under both
+rules, so every stored answer key stands. The v3 run's one bucket A miss was A03,
+answered correctly as "Sept 8 and Sept 10": `value_match` wants ISO dates, and
+v1 fails the same way. The local judge's 5.00 means little, since v1 also scored
+5.00 locally. One run of three cases supports "v3 states the tool's colour",
+not a broader quality claim.
+
+`evals/run_local.py` takes `--tools-url` and refuses to run against a server
+whose last day is not the dataset's as-of date. Since chat moved to real data,
+the default server no longer serves the fixture, and a run against it would have
+scored nonsense without complaint.
 

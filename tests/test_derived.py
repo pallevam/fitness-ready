@@ -134,3 +134,57 @@ def test_zone_threshold_is_stated_once():
 )
 def test_strength_arm_of_the_hard_session_rule(activity, expected):
     assert derived.is_hard_session(activity) is expected
+
+
+# --- readiness verdict (SPEC §8) -------------------------------------------
+GOOD_SLEEP = {"score": 80, "total_min": 450, "trustworthy": True, "validation": "ENHANCED_FINAL"}
+GOOD_HRV = {"last_night_avg": 58, "baseline_low": 50, "baseline_high": 65}
+GOOD_RHR = {"delta": 1.0}
+RECOVERED = {"recovery_remaining_hours": 0}
+
+
+def _colour(sleep=GOOD_SLEEP, hrv=GOOD_HRV, rhr=GOOD_RHR, hard=RECOVERED):
+    return derived.readiness_verdict(sleep, hrv, rhr, hard)
+
+
+def test_all_four_checks_pass_is_green():
+    verdict = _colour()
+    assert verdict["colour"] == "green"
+    assert verdict["based_on"] == "4 of 4 checks"
+
+
+def test_one_failure_is_amber_two_is_red():
+    assert _colour(rhr={"delta": 3.1})["colour"] == "amber"
+    assert _colour(rhr={"delta": 3.1}, hard={"recovery_remaining_hours": 5})["colour"] == "red"
+
+
+def test_boundaries_are_inclusive_where_the_rubric_says():
+    assert _colour(sleep={**GOOD_SLEEP, "score": 70})["colour"] == "green"
+    assert _colour(sleep={**GOOD_SLEEP, "score": 69})["colour"] == "amber"
+    assert _colour(rhr={"delta": 3.0})["colour"] == "green"
+    assert _colour(hrv={**GOOD_HRV, "last_night_avg": 50})["colour"] == "green"
+
+
+def test_untrustworthy_sleep_is_a_failure_not_missing():
+    off_wrist = {"score": None, "total_min": 0, "trustworthy": False, "validation": "OFF_WRIST"}
+    verdict = _colour(sleep=off_wrist)
+    assert verdict["failed"] == ["sleep"] and verdict["colour"] == "amber"
+    assert _colour(sleep=off_wrist, rhr={"delta": 5})["colour"] == "red"
+
+
+def test_no_hrv_baseline_is_missing_and_does_not_cap_the_colour():
+    """The real account's first weeks: HRV nightly, no baseline band yet."""
+    verdict = _colour(hrv={"last_night_avg": 65, "baseline_low": None, "baseline_high": None})
+    assert verdict["missing"] == ["hrv"]
+    assert verdict["colour"] == "green"
+    assert verdict["based_on"] == "3 of 4 checks"
+
+
+def test_two_missing_checks_is_insufficient_data_not_red():
+    no_sleep = {"score": None, "total_min": None, "trustworthy": False, "validation": None}
+    no_hrv = {"last_night_avg": None, "baseline_low": None, "baseline_high": None}
+    assert _colour(sleep=no_sleep, hrv=no_hrv)["colour"] == "insufficient_data"
+
+
+def test_no_hard_session_on_record_means_nothing_to_recover_from():
+    assert _colour(hard=None)["colour"] == "green"

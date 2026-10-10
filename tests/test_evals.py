@@ -133,3 +133,27 @@ def test_semicolon_parts_are_trimmed():
     """`2026-09-08; 2026-09-10` splits into a part with a leading space."""
     answer = "Unreliable on **2026-09-08** (OFF_WRIST) and **2026-09-10** (MANUAL)."
     assert metrics.value_match("2026-09-08; 2026-09-10", answer) == 1
+
+
+def test_todays_readiness_cases_carry_the_tools_verdict(conn, dataset):
+    answers = compute(conn, dataset)
+    for row in dataset:
+        if row["id"] in ("B03", "B07", "B09"):
+            assert row["expected_answer"] == answers[row["id"]] == "red"
+
+
+def test_verdict_match_takes_the_first_colour_named():
+    assert metrics.verdict_match("red", "Red today: HRV 48 ms is below 50-65.") == 1
+    assert metrics.verdict_match("red", "Amber. Resting HR is up 3.3 bpm.") == 0
+    assert metrics.verdict_match("red", "Red, though it would be green after a good night.") == 1
+    assert metrics.verdict_match("red", "Recovery is incomplete; take it easy.") == 0
+    assert metrics.verdict_match("insufficient_data", "Insufficient data: no sleep.") == 1
+
+
+def test_verdict_match_ignores_words_that_contain_a_colour():
+    assert metrics.stated_verdict("Your reduced HRV and a shredded week") is None
+
+
+def test_verdict_match_is_none_without_an_expected_colour():
+    assert metrics.verdict_match("", "Green.") is None
+    assert metrics.verdict_match("8.4", "Green.") is None

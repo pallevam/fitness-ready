@@ -267,7 +267,8 @@ the source, the UI wording is not.
 ```bash
 python3 scripts/set_prompt.py --show   # which prompt is live
 python3 scripts/set_prompt.py v1       # the naive baseline
-python3 scripts/set_prompt.py v2       # the fixed prompt
+python3 scripts/set_prompt.py v2       # rubric applied by the model
+python3 scripts/set_prompt.py v3       # verdict computed by the tool (live)
 ```
 
 It patches the AI Agent node's `systemMessage` in place, so tools, credentials

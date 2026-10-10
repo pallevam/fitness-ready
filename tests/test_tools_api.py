@@ -199,3 +199,11 @@ def test_missing_database_is_a_503_the_agent_can_read(tmp_path, monkeypatch):
         response = client.get("/health")
     assert response.status_code == 503
     assert "do not retry" in response.json()["detail"]
+
+
+def test_readiness_inputs_carry_the_verdict(client):
+    """The fixture's as-of day: HRV below band, RHR +3.3, 18 h recovery left."""
+    verdict = client.get("/tools/get_readiness_inputs", params={"date": AS_OF}).json()["verdict"]
+    assert verdict["colour"] == "red"
+    assert verdict["failed"] == ["hrv", "resting_hr", "recovery"]
+    assert verdict["missing"] == []
