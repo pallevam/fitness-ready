@@ -224,7 +224,7 @@ def test_a_hard_session_without_recovery_time_is_not_counted_as_recovered(
     copy = tmp_path / "no_recovery.duckdb"
     shutil.copy(db_file, copy)
     with connect(copy) as writer:
-        # A hard run on the morning of the as-of day, 9 h before the 18:00 reference.
+        # A 60-min hard run from 09:00 on the as-of day: ended 14 h before that day's end.
         writer.execute(
             "INSERT INTO activities (activity_id, start_time, type, duration_min, avg_hr, "
             "hard_minutes, recovery_time_hours) VALUES (999, ?, 'running', 60, 150, 31.9, NULL)",
@@ -235,7 +235,8 @@ def test_a_hard_session_without_recovery_time_is_not_counted_as_recovered(
         body = client.get("/tools/get_readiness_inputs", params={"date": AS_OF}).json()
     hard = body["last_hard_session"]
     assert hard["activity_id"] == 999 and hard["recovery_basis"] == "assumed"
-    assert hard["recovery_remaining_hours"] == ASSUMED_RECOVERY_HOURS - 9
+    assert hard["hours_ago"] == 14.0
+    assert hard["recovery_remaining_hours"] == ASSUMED_RECOVERY_HOURS - 14
     assert "recovery" in body["verdict"]["failed"]
 
 

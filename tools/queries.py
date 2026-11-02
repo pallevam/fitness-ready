@@ -281,7 +281,8 @@ def get_readiness_inputs(conn: duckdb.DuckDBPyConnection, as_of: date | None = N
         last_hard = None
         gaps.append("no hard session on record")
     else:
-        hours_ago = derived.hours_between(datetime.fromisoformat(hard["start_time"]), reference)
+        # Recovery counts from the end of the session, as the watch does.
+        hours_ago = derived.hours_between(derived.session_end(hard), reference)
         watch_hours = hard["recovery_time_hours"]
         recovery = watch_hours if watch_hours is not None else derived.ASSUMED_RECOVERY_HOURS
         last_hard = {

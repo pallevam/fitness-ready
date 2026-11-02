@@ -78,8 +78,21 @@ def test_hrv_vs_baseline(value, low, high, expected):
     assert derived.hrv_vs_baseline(value, low, high) == expected
 
 
-def test_reference_instant_is_deterministic_for_a_pinned_date():
-    assert derived.reference_instant(date(2026, 9, 13)) == datetime(2026, 9, 13, 18, 0)
+def test_reference_instant_is_now_on_the_current_day():
+    # 11:02 on 2 Nov: a session that ended at 13:35 the day before is 21.5 h old,
+    # not the 29.3 h an 18:00 anchor gave.
+    now = datetime(2026, 11, 2, 11, 2)
+    assert derived.reference_instant(date(2026, 11, 2), now=now) == now
+
+
+def test_reference_instant_is_the_end_of_a_past_day():
+    now = datetime(2026, 11, 2, 11, 2)
+    assert derived.reference_instant(date(2026, 9, 13), now=now) == datetime(2026, 9, 14, 0, 0)
+
+
+def test_recovery_counts_from_the_end_of_the_session():
+    row = {"start_time": "2026-10-25 05:07:27", "duration_min": 173.65}
+    assert derived.session_end(row) == datetime(2026, 10, 25, 8, 1, 6)
 
 
 def test_gap_descriptions_collapse_when_long():

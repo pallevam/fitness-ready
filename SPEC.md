@@ -325,9 +325,10 @@ Decisions made while implementing Phases 0–2 and 4 that the spec left open:
 - **Fixture lives in code, not in the repo.** `loader/make_fixture.py` regenerates
   `raw/fixture/` deterministically (seed 20260913). `raw/` stays gitignored, so
   nothing about the synthetic-vs-real path differs.
-- **Reference instant for "hours ago".** `get_readiness_inputs` anchors an as-of
-  date at 18:00 local (`tools/derived.REFERENCE_HOUR`) rather than `now()`, so a
-  pinned `as_of_date` yields the same bundle on every eval run.
+- **Reference instant for "hours ago".** `get_readiness_inputs` anchored an as-of
+  date at 18:00 local rather than `now()`, so a pinned `as_of_date` yielded the
+  same bundle on every eval run. Replaced on 2 Nov 2026; see "Recovery counts
+  from now" below.
 - **Extra fields beyond §7.** Tool responses add `trustworthy` on sleep rows,
   `hard_session` on activity rows, `latest_vs_baseline` on the HRV trend, and
   `reference_time` on the readiness bundle. All are derived from §6.3 and exist
@@ -870,3 +871,12 @@ bucket C and J08 all contained with no tool calls, judge mean 4.83 (4.92 on the
 first run; one case moved a point, which is noise at n=12). v4 went live the
 same day.
 
+### Recovery counts from now, from the session's end (2 Nov 2026)
+
+"Hours ago" for the last hard session was measured from the session's start to
+18:00 on the as-of date, a choice that only served the deleted evals. On the
+morning of 2 Nov it reported a strength session as 29.3 h old when it had ended
+21.5 h earlier, so a morning check could clear recovery up to 7 h early, and a
+session after 18:00 was not counted until the next day. It now counts from the
+session's end (start plus timer time, as the watch counts recovery) to now on
+the current day, or to the end of a past as-of day.

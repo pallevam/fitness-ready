@@ -25,10 +25,6 @@ HRV_LONG_WINDOW_DAYS = 60
 # Sleep the agent must not trust (SPEC §6.3).
 UNTRUSTWORTHY_VALIDATIONS = ("OFF_WRIST", "MANUAL")
 
-# `get_readiness_inputs` reports "hours ago" for the last hard session. Evals pin
-# `as_of_date`, so the reference instant must not depend on wall-clock time:
-# we anchor every as-of date to early evening, when the next day gets planned.
-REFERENCE_HOUR = 18
 
 # --- hard session ----------------------------------------------------------
 HARD_SESSION_AEROBIC_TE = 3.0
@@ -126,7 +122,7 @@ def hrv_vs_baseline(
 SESSION_MERGE_GAP_MIN = 10.0
 
 
-def _end(row: Mapping[str, Any]) -> datetime:
+def session_end(row: Mapping[str, Any]) -> datetime:
     # Timer time, so a paused part ends early and the gap reads long: errs
     # toward keeping parts apart.
     return datetime.fromisoformat(row["start_time"]) + timedelta(minutes=row.get("duration_min") or 0)
@@ -145,7 +141,7 @@ def merge_split_sessions(rows: list[Mapping[str, Any]],
     for row in rows:
         last = groups[-1][-1] if groups else None
         if (last is not None and row["type"] == last["type"]
-                and 0 <= (datetime.fromisoformat(row["start_time"]) - _end(last)).total_seconds() / 60
+                and 0 <= (datetime.fromisoformat(row["start_time"]) - session_end(last)).total_seconds() / 60
                 <= max_gap_min):
             groups[-1].append(row)
         else:
@@ -187,7 +183,7 @@ def _merge(parts: list[Mapping[str, Any]]) -> dict[str, Any]:
         "body_battery_impact": total("body_battery_impact"),
         "parts": [p["activity_id"] for p in parts],
         "gap_min": round(sum(
-            (datetime.fromisoformat(b["start_time"]) - _end(a)).total_seconds() / 60
+            (datetime.fromisoformat(b["start_time"]) - session_end(a)).total_seconds() / 60
             for a, b in zip(parts, parts[1:])), 1),
     }
     distance = merged["distance_km"]
@@ -298,8 +294,15 @@ def readiness_verdict(
 
 
 # --- helpers shared by the tool endpoints ----------------------------------
-def reference_instant(as_of: date) -> datetime:
-    return datetime.combine(as_of, time(hour=REFERENCE_HOUR))
+def reference_instant(as_of: date, now: datetime | None = None) -> datetime:
+    """The instant "hours ago" counts to: now on the current day, else the as-of day's end.
+
+    It was 18:00 on the as-of date, so pinned evals got the same answer on every
+    run. In live use that misdated recovery by up to 7 h each morning and left
+    out sessions after 18:00.
+    """
+    now = now or datetime.now()
+    return min(now, datetime.combine(as_of + timedelta(days=1), time()))
 
 
 def hours_between(earlier: datetime, later: datetime) -> float:
