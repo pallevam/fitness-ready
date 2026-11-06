@@ -28,7 +28,6 @@ Newest first. One line per decision: date, decision, why, what it rules out.
   and cases exist.
 - **6 Nov:** research done: 939 complaints from HN, GitHub, Reddit and app stores
   plus forums. Results are in segment 1.
-
 - **6 Nov:** start with segment 1, grounded in public complaints, not our intuition.
   Research is a quick pass over four source groups (Hacker News, GitHub issues,
   Reddit, app-store reviews with power-user forums). Why: the current product was
@@ -126,5 +125,5 @@ engine is trusted.
 ## Open questions
 
 - Segment 5: (a) LLM-coach benchmark or (b) device accuracy?
-- Does "tech folks" mean developers who code against their data, or technical people
-  who just want better answers?
+- Segment 1: confirm persona B as the beachhead (proposed above).
+- Segment 4: verify the Garmin API terms (the AI clause, read-only).
