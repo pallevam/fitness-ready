@@ -14,7 +14,7 @@ Usability before monetisation; resources are not the constraint.
 | # | Segment | Decision it settles | Status |
 |---|---|---|---|
 | 1 | User and job | Which tech person, which recurring pain, how often | **Decided 13 Nov**: persona B |
-| 2 | Wedge | The one thing we do that Garmin, Whoop and Oura's AI coaches can't | Open |
+| 2 | Wedge | The one thing we do that Garmin, Whoop and Oura's AI coaches can't | **In progress** |
 | 3 | Product shape | App, chat bot, CLI, or a plug-in for the AI tools people already use | Open |
 | 4 | Data access | Garmin Health API, Apple Health, Health Connect, FIT uploads: legal and scalable | Open |
 | 5 | Trust layer | Evals: LLM-coach benchmark (a) or device accuracy (b) | Open |
@@ -24,6 +24,10 @@ Usability before monetisation; resources are not the constraint.
 
 Newest first. One line per decision: date, decision, why, what it rules out.
 
+- **13 Nov:** **local-first is a firm constraint:** user data stays with the user,
+  never on our servers. Its form (desktop app, phone app, a plug-in for the user's
+  own AI tool) is decided at segment 3. Why: privacy is a differentiator (F8), but
+  fixing the form now would pre-empt segment 3.
 - **13 Nov:** **beachhead user is B, the AI-native athlete.** Why: the strongest
   evidence (F4–F6, F10), the founder is one, and they can afford to pay. Rules out
   designing first for mainstream users (C, D), coaches (E) or tinkerers (A, who
@@ -130,5 +134,4 @@ engine is trusted.
 ## Open questions
 
 - Segment 5: (a) LLM-coach benchmark or (b) device accuracy?
-- Local-first: lock now, or keep as a constraint and settle at segment 3?
 - Segment 4: verify the Garmin API terms (the AI clause, read-only).
