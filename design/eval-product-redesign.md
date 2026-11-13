@@ -15,7 +15,7 @@ Usability before monetisation; resources are not the constraint.
 |---|---|---|---|
 | 1 | User and job | Which tech person, which recurring pain, how often | **Decided 13 Nov**: persona B |
 | 2 | Wedge | The one thing we do that Garmin, Whoop and Oura's AI coaches can't | **Decided 13 Nov**: W1, correct answers |
-| 3 | Product shape | App, chat bot, CLI, or a plug-in for the AI tools people already use | **Mostly decided 13 Nov**: phone first, inside Claude/ChatGPT, remote connector that stores nothing (X); open: proactive delivery |
+| 3 | Product shape | App, chat bot, CLI, or a plug-in for the AI tools people already use | **Decided 13 Nov**: a remote connector inside Claude and ChatGPT, phone first; scheduled briefs (D1, email fallback) |
 | 4 | Data access | Garmin Health API, Apple Health, Health Connect, FIT uploads: legal and scalable | Open |
 | 5 | Trust layer | Evals: LLM-coach benchmark (a) or device accuracy (b) | Open |
 | 6 | First version and build plan | What ships in 4–6 weeks, what is kept from today, what is dropped | Open |
@@ -24,6 +24,13 @@ Usability before monetisation; resources are not the constraint.
 
 Newest first. One line per decision: date, decision, why, what it rules out.
 
+- **13 Nov:** **proactive delivery: D1, the AI app's own scheduled tasks** (ChatGPT
+  Tasks, Claude scheduled prompts) calling our connector, **with D2, an email brief,
+  as the fallback.** D1 depends on scheduled runs being able to call third-party
+  connectors, which is unverified.
+- **13 Nov:** **the privacy promise is refined to "no health data stored; an
+  encrypted access token you can revoke anytime".** A scheduled brief needs the
+  server to reach Garmin while the user is away. Segment 3 is closed.
 - **13 Nov:** **the aha moment is A2, with A1 as its proof:** on day one, an answer
   that connects training, sleep and health and shows why, with sources, and in the
   same answer flags any data it doesn't trust (an unsynced night, a sensor spike, a

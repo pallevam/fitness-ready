@@ -58,7 +58,11 @@ source is strong, **Low** when it is suggestive.
 
 - Do persona-B users pay for, or switch to, a better answer layer, or just tolerate it?
 - How large is the local-first-only group, compared with users happy to use cloud LLMs?
-- Garmin API terms: is AI use actually allowed, and on which tier?
+- Garmin API terms: is AI use actually allowed, and on which tier? Is the Personal
+  key read-only? Do Personal and Startup include historical backfill (needed for the
+  day-one aha)?
+- Can ChatGPT Tasks and Claude scheduled prompts call third-party connectors? This
+  decides proactive delivery (D1 or the email fallback).
 - Apple Health and Health Connect: what is the access story for an independent app?
 
 ## Updating this file
@@ -70,6 +74,9 @@ source is strong, **Low** when it is suggestive.
 - Keep the file under about two pages. Detail belongs in the per-source files.
 
 ## Change log
+
+- **13 Nov 2026:** added the open questions that segment-3 decisions depend on
+  (Garmin backfill, scheduled connector calls).
 
 - **6 Nov 2026:** created from the four-source pain-point pass (939 items) and the
   founder's usage review.
