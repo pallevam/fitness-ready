@@ -16,7 +16,7 @@ Usability before monetisation; resources are not the constraint.
 | 1 | User and job | Which tech person, which recurring pain, how often | **Decided 13 Nov**: persona B |
 | 2 | Wedge | The one thing we do that Garmin, Whoop and Oura's AI coaches can't | **Decided 13 Nov**: W1, correct answers |
 | 3 | Product shape | App, chat bot, CLI, or a plug-in for the AI tools people already use | **Decided 13 Nov**: a remote connector inside Claude and ChatGPT, phone first; scheduled briefs (D1, email fallback) |
-| 4 | Data access | Garmin Health API, Apple Health, Health Connect, FIT uploads: legal and scalable | Open |
+| 4 | Data access | Garmin Health API, Apple Health, Health Connect, FIT uploads: legal and scalable | **In progress**: Garmin approval requested 13 Nov |
 | 5 | Trust layer | Evals: LLM-coach benchmark (a) or device accuracy (b) | Open |
 | 6 | First version and build plan | What ships in 4–6 weeks, what is kept from today, what is dropped | Open |
 
@@ -24,6 +24,12 @@ Usability before monetisation; resources are not the constraint.
 
 Newest first. One line per decision: date, decision, why, what it rules out.
 
+- **13 Nov:** **asked Garmin for written approval** through the Developer Contact Us
+  form (garmin.com/en-IN/forms/developercontactus/), as an independent developer
+  under the working name fitness-ready. Asked about §5.2(o) approval for the
+  connector, Starter vs Enterprise given the need for history, the §15.10 AI
+  transparency and consent format, and Personal-tier prototyping. X (the remote
+  connector) is gated on the answer. Awaiting reply.
 - **13 Nov:** **proactive delivery: D1, the AI app's own scheduled tasks** (ChatGPT
   Tasks, Claude scheduled prompts) calling our connector, **with D2, an email brief,
   as the fallback.** D1 depends on scheduled runs being able to call third-party
