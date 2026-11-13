@@ -14,7 +14,7 @@ Usability before monetisation; resources are not the constraint.
 | # | Segment | Decision it settles | Status |
 |---|---|---|---|
 | 1 | User and job | Which tech person, which recurring pain, how often | **Decided 13 Nov**: persona B |
-| 2 | Wedge | The one thing we do that Garmin, Whoop and Oura's AI coaches can't | **In progress** |
+| 2 | Wedge | The one thing we do that Garmin, Whoop and Oura's AI coaches can't | **Decided 13 Nov**: W1, correct answers |
 | 3 | Product shape | App, chat bot, CLI, or a plug-in for the AI tools people already use | Open |
 | 4 | Data access | Garmin Health API, Apple Health, Health Connect, FIT uploads: legal and scalable | Open |
 | 5 | Trust layer | Evals: LLM-coach benchmark (a) or device accuracy (b) | Open |
@@ -24,6 +24,12 @@ Usability before monetisation; resources are not the constraint.
 
 Newest first. One line per decision: date, decision, why, what it rules out.
 
+- **13 Nov:** **the wedge is W1, correct answers:** a meaning layer that interprets
+  wearable data correctly (units, scales, which night, runs saved in parts, sensor
+  artefacts) and shows how each answer was built. W3 (follow-through) is the later
+  reason to pay. W2 (hidden data) and W4 (memory across devices) are features.
+  Why: what fails today is meaning, not access (F5, F6, F10); it is hard to copy;
+  and evals become the proof behind it, which points segment 5 at option (a).
 - **13 Nov:** **local-first is a firm constraint:** user data stays with the user,
   never on our servers. Its form (desktop app, phone app, a plug-in for the user's
   own AI tool) is decided at segment 3. Why: privacy is a differentiator (F8), but
