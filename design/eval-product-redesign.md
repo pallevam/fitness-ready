@@ -15,7 +15,7 @@ Usability before monetisation; resources are not the constraint.
 |---|---|---|---|
 | 1 | User and job | Which tech person, which recurring pain, how often | **Decided 13 Nov**: persona B |
 | 2 | Wedge | The one thing we do that Garmin, Whoop and Oura's AI coaches can't | **Decided 13 Nov**: W1, correct answers |
-| 3 | Product shape | App, chat bot, CLI, or a plug-in for the AI tools people already use | Open |
+| 3 | Product shape | App, chat bot, CLI, or a plug-in for the AI tools people already use | **In progress**: phone first, inside Claude/ChatGPT; engine placement open |
 | 4 | Data access | Garmin Health API, Apple Health, Health Connect, FIT uploads: legal and scalable | Open |
 | 5 | Trust layer | Evals: LLM-coach benchmark (a) or device accuracy (b) | Open |
 | 6 | First version and build plan | What ships in 4–6 weeks, what is kept from today, what is dropped | Open |
@@ -24,6 +24,16 @@ Usability before monetisation; resources are not the constraint.
 
 Newest first. One line per decision: date, decision, why, what it rules out.
 
+- **13 Nov:** **medical boundary: educate with citations, flag, refer; never
+  diagnose.** The product explains how fitness, sleep and health connect, cites
+  sources, and flags patterns worth taking to a doctor. Diagnosis and treatment stay
+  with medical professionals. Why: it serves the "instructor plus medical
+  encyclopedia" north star without becoming a regulated medical device.
+- **13 Nov:** **the phone is the primary surface.** The founder used the laptop only
+  because no phone setup existed (fetch from Garmin, feed to an LLM, get insights).
+  Also settled at segment 3: inside Claude or ChatGPT first (not our own chat
+  window); both scheduled briefs and on-demand answers; Garmin first behind a
+  vendor adapter; setup as close to zero-install as possible.
 - **13 Nov:** **the wedge is W1, correct answers:** a meaning layer that interprets
   wearable data correctly (units, scales, which night, runs saved in parts, sensor
   artefacts) and shows how each answer was built. W3 (follow-through) is the later
