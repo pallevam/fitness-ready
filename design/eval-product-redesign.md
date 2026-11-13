@@ -13,7 +13,7 @@ Usability before monetisation; resources are not the constraint.
 
 | # | Segment | Decision it settles | Status |
 |---|---|---|---|
-| 1 | User and job | Which tech person, which recurring pain, how often | **Research done**; persona B proposed, awaiting decision |
+| 1 | User and job | Which tech person, which recurring pain, how often | **Decided 13 Nov**: persona B |
 | 2 | Wedge | The one thing we do that Garmin, Whoop and Oura's AI coaches can't | Open |
 | 3 | Product shape | App, chat bot, CLI, or a plug-in for the AI tools people already use | Open |
 | 4 | Data access | Garmin Health API, Apple Health, Health Connect, FIT uploads: legal and scalable | Open |
@@ -24,6 +24,11 @@ Usability before monetisation; resources are not the constraint.
 
 Newest first. One line per decision: date, decision, why, what it rules out.
 
+- **13 Nov:** **beachhead user is B, the AI-native athlete.** Why: the strongest
+  evidence (F4–F6, F10), the founder is one, and they can afford to pay. Rules out
+  designing first for mainstream users (C, D), coaches (E) or tinkerers (A, who
+  are a channel). Caveat: B's free alternative is ChatGPT plus copy-paste, so paid
+  features must do what that can't (see segment 2).
 - **6 Nov:** keep one doc. Evals move to their own file at segment 5, once rubrics
   and cases exist.
 - **6 Nov:** research done: 939 complaints from HN, GitHub, Reddit and app stores
@@ -114,7 +119,7 @@ segment 4:** commenters say the Personal key is read-only, and quote a terms cla
 barring use to "create or maintain any AI model, AI system or AI generated knowledge
 base".
 
-### Proposed decision (awaiting the founder)
+### Decision (13 Nov)
 
 **Beachhead: B, the AI-native athlete.** They already use an assistant daily and
 already try to pipe their wearable data into it; their pain is broken pipes and
@@ -125,5 +130,5 @@ engine is trusted.
 ## Open questions
 
 - Segment 5: (a) LLM-coach benchmark or (b) device accuracy?
-- Segment 1: confirm persona B as the beachhead (proposed above).
+- Local-first: lock now, or keep as a constraint and settle at segment 3?
 - Segment 4: verify the Garmin API terms (the AI clause, read-only).
