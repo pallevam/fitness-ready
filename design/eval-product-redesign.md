@@ -24,6 +24,16 @@ Usability before monetisation; resources are not the constraint.
 
 Newest first. One line per decision: date, decision, why, what it rules out.
 
+- **13 Nov:** **build a device-agnostic engine (v0) in TypeScript under `engine/`.**
+  Layers: vendor adapters (Garmin first) → canonical model (units in field names,
+  scores carry their scale, nights dated by wake day, flags and provenance on every
+  record) → meaning layer ported from `tools/derived.py` → MCP tools that return
+  `{data, flags, how_built}` → stateless remote and local stdio transports. Why:
+  one codebase serves both X (remote) and Y (local); Garmin's official JS FIT SDK
+  and mature MCP tooling are available; stateless serverless hosting fits "stores
+  nothing". Scope: no public deployment until Garmin replies. Development data:
+  recorded snapshots of the founder's own data (gitignored); tests use synthetic
+  fixtures only. The current Python coach keeps running untouched.
 - **13 Nov:** **asked Garmin for written approval** through the Developer Contact Us
   form (garmin.com/en-IN/forms/developercontactus/), as an independent developer
   under the working name fitness-ready. Asked about §5.2(o) approval for the
