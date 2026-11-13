@@ -15,7 +15,7 @@ Usability before monetisation; resources are not the constraint.
 |---|---|---|---|
 | 1 | User and job | Which tech person, which recurring pain, how often | **Decided 13 Nov**: persona B |
 | 2 | Wedge | The one thing we do that Garmin, Whoop and Oura's AI coaches can't | **Decided 13 Nov**: W1, correct answers |
-| 3 | Product shape | App, chat bot, CLI, or a plug-in for the AI tools people already use | **In progress**: phone first, inside Claude/ChatGPT; engine placement open |
+| 3 | Product shape | App, chat bot, CLI, or a plug-in for the AI tools people already use | **Mostly decided 13 Nov**: phone first, inside Claude/ChatGPT, remote connector that stores nothing (X); open: aha moment, proactive delivery |
 | 4 | Data access | Garmin Health API, Apple Health, Health Connect, FIT uploads: legal and scalable | Open |
 | 5 | Trust layer | Evals: LLM-coach benchmark (a) or device accuracy (b) | Open |
 | 6 | First version and build plan | What ships in 4–6 weeks, what is kept from today, what is dropped | Open |
@@ -24,6 +24,12 @@ Usability before monetisation; resources are not the constraint.
 
 Newest first. One line per decision: date, decision, why, what it rules out.
 
+- **13 Nov:** **engine placement: X, a remote connector that stores nothing,**
+  inside Claude and ChatGPT and reachable from the phone with zero install. Data is
+  fetched and interpreted in flight; no health data at rest on our servers. **Y**, a
+  local desktop plug-in, comes later for privacy-strict users (F8). Rules out Z (our
+  own phone app as the engine) for the first version. Trade-off accepted: users
+  must trust "processed, never stored".
 - **13 Nov:** **medical boundary: educate with citations, flag, refer; never
   diagnose.** The product explains how fitness, sleep and health connect, cites
   sources, and flags patterns worth taking to a doctor. Diagnosis and treatment stay
