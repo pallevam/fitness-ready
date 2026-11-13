@@ -15,7 +15,7 @@ Usability before monetisation; resources are not the constraint.
 |---|---|---|---|
 | 1 | User and job | Which tech person, which recurring pain, how often | **Decided 13 Nov**: persona B |
 | 2 | Wedge | The one thing we do that Garmin, Whoop and Oura's AI coaches can't | **Decided 13 Nov**: W1, correct answers |
-| 3 | Product shape | App, chat bot, CLI, or a plug-in for the AI tools people already use | **Mostly decided 13 Nov**: phone first, inside Claude/ChatGPT, remote connector that stores nothing (X); open: aha moment, proactive delivery |
+| 3 | Product shape | App, chat bot, CLI, or a plug-in for the AI tools people already use | **Mostly decided 13 Nov**: phone first, inside Claude/ChatGPT, remote connector that stores nothing (X); open: proactive delivery |
 | 4 | Data access | Garmin Health API, Apple Health, Health Connect, FIT uploads: legal and scalable | Open |
 | 5 | Trust layer | Evals: LLM-coach benchmark (a) or device accuracy (b) | Open |
 | 6 | First version and build plan | What ships in 4–6 weeks, what is kept from today, what is dropped | Open |
@@ -24,6 +24,12 @@ Usability before monetisation; resources are not the constraint.
 
 Newest first. One line per decision: date, decision, why, what it rules out.
 
+- **13 Nov:** **the aha moment is A2, with A1 as its proof:** on day one, an answer
+  that connects training, sleep and health and shows why, with sources, and in the
+  same answer flags any data it doesn't trust (an unsynced night, a sensor spike, a
+  run saved in parts). Consequence for segment 4: A2 needs 1–2 weeks of history on
+  day one, so historical backfill is a requirement; DC Rainmaker lists backfill as
+  Garmin Enterprise-only, which must be verified.
 - **13 Nov:** **engine placement: X, a remote connector that stores nothing,**
   inside Claude and ChatGPT and reachable from the phone with zero install. Data is
   fetched and interpreted in flight; no health data at rest on our servers. **Y**, a
