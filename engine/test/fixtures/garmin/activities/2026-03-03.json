@@ -1,0 +1,42 @@
+[
+ {
+  "activityId": 1000000003,
+  "startTimeLocal": "2026-03-03 19:00:00",
+  "startTimeGMT": "2026-03-03 13:30:00",
+  "activityType": {
+   "typeKey": "badminton"
+  },
+  "duration": 1800.0,
+  "elapsedDuration": 1800.0,
+  "calories": 200.0,
+  "averageHR": null,
+  "maxHR": null,
+  "eventType": {
+   "typeKey": "uncategorized"
+  },
+  "isManualActivity": true,
+  "manualActivity": true
+ },
+ {
+  "activityId": 1000000004,
+  "startTimeLocal": "2026-03-03 06:00:00",
+  "startTimeGMT": "2026-03-03 00:30:00",
+  "activityType": {
+   "typeKey": "indoor_cardio"
+  },
+  "duration": 1200.0,
+  "elapsedDuration": 1260.0,
+  "calories": 150.0,
+  "averageHR": 130.0,
+  "maxHR": 160.0,
+  "aerobicTrainingEffect": 2.8,
+  "anaerobicTrainingEffect": 1.1,
+  "trainingEffectLabel": "AEROBIC_BASE",
+  "activityRecoveryHours": 12,
+  "eventType": {
+   "typeKey": "uncategorized"
+  },
+  "isManualActivity": false,
+  "manualActivity": false
+ }
+]

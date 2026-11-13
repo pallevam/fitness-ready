@@ -1,0 +1,22 @@
+{
+ "dailySleepDTO": {
+  "id": null,
+  "userProfilePK": 1,
+  "calendarDate": "2026-03-03",
+  "sleepTimeSeconds": null,
+  "napTimeSeconds": null,
+  "sleepWindowConfirmed": null,
+  "sleepWindowConfirmationType": null,
+  "sleepStartTimestampGMT": null,
+  "sleepEndTimestampGMT": null,
+  "sleepStartTimestampLocal": null,
+  "sleepEndTimestampLocal": null,
+  "deepSleepSeconds": null,
+  "lightSleepSeconds": null,
+  "remSleepSeconds": null,
+  "awakeSleepSeconds": null,
+  "averageRespirationValue": null,
+  "sleepScores": null
+ },
+ "restingHeartRate": null
+}

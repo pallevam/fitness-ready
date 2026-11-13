@@ -1,0 +1,68 @@
+[
+ {
+  "activityId": 1000000001,
+  "activityName": "Morning Run",
+  "startTimeLocal": "2026-03-02 07:00:00",
+  "startTimeGMT": "2026-03-02 01:30:00",
+  "endTimeGMT": "2026-03-02 02:22:00",
+  "activityType": {
+   "typeId": 1,
+   "typeKey": "running",
+   "parentTypeId": 17
+  },
+  "distance": 8000.0,
+  "duration": 3000.0,
+  "elapsedDuration": 3120.0,
+  "movingDuration": 2990.0,
+  "elevationGain": 40.25,
+  "elevationLoss": 39.0,
+  "averageSpeed": 2.667,
+  "calories": 520.0,
+  "averageHR": 148.0,
+  "maxHR": 170.0,
+  "averageRunningCadenceInStepsPerMinute": 162.4,
+  "trainingEffectLabel": "TEMPO",
+  "aerobicTrainingEffectMessage": "IMPROVING_VO2_MAX_13",
+  "anaerobicTrainingEffectMessage": "NO_ANAEROBIC_BENEFIT_0",
+  "differenceBodyBattery": -14,
+  "hrTimeInZone_1": 300.0,
+  "hrTimeInZone_2": 900.0,
+  "hrTimeInZone_3": 1200.0,
+  "hrTimeInZone_4": 480.0,
+  "hrTimeInZone_5": 120.0,
+  "hasPolyline": true,
+  "eventType": {
+   "typeKey": "uncategorized"
+  },
+  "isManualActivity": false,
+  "manualActivity": false
+ },
+ {
+  "activityId": 1000000002,
+  "activityName": "Strength",
+  "startTimeLocal": "2026-03-02 18:30:00",
+  "startTimeGMT": "2026-03-02 13:00:00",
+  "endTimeGMT": "2026-03-02 13:45:00",
+  "activityType": {
+   "typeId": 13,
+   "typeKey": "strength_training"
+  },
+  "distance": 0.0,
+  "duration": 2700.0,
+  "elapsedDuration": 2700.0,
+  "calories": 300.0,
+  "averageHR": 118.0,
+  "maxHR": 150.0,
+  "trainingEffectLabel": "ANAEROBIC_CAPACITY",
+  "aerobicTrainingEffectMessage": "MAINTAINING_AEROBIC_FITNESS_1",
+  "anaerobicTrainingEffectMessage": "MAINTAINING_ANAEROBIC_BASE_1",
+  "differenceBodyBattery": -6,
+  "hrTimeInZone_4": 60.0,
+  "hrTimeInZone_5": 0.0,
+  "eventType": {
+   "typeKey": "uncategorized"
+  },
+  "isManualActivity": false,
+  "manualActivity": false
+ }
+]

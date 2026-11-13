@@ -1,0 +1,16 @@
+{
+ "calendarDate": "2026-03-02",
+ "restingHeartRate": 51,
+ "totalSteps": 8400,
+ "averageStressLevel": 32,
+ "maxStressLevel": 90,
+ "stressQualifier": "BALANCED",
+ "bodyBatteryHighestValue": 88,
+ "bodyBatteryLowestValue": 20,
+ "moderateIntensityMinutes": 15,
+ "vigorousIntensityMinutes": 10,
+ "durationInMilliseconds": 86400000,
+ "wellnessStartTimeLocal": "2026-03-02T00:00:00.0",
+ "includesWellnessData": true,
+ "wellnessEndTimeLocal": "2026-03-03T00:00:00.0"
+}

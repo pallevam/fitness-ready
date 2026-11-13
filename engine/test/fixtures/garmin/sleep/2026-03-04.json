@@ -1,0 +1,22 @@
+{
+ "dailySleepDTO": {
+  "id": 1772564400000,
+  "userProfilePK": 1,
+  "calendarDate": "2026-03-04",
+  "sleepTimeSeconds": 18000,
+  "napTimeSeconds": null,
+  "sleepWindowConfirmed": null,
+  "sleepWindowConfirmationType": "manually_confirmed",
+  "sleepStartTimestampGMT": 1772564400000,
+  "sleepEndTimestampGMT": 1772584200000,
+  "sleepStartTimestampLocal": 1772584200000,
+  "sleepEndTimestampLocal": 1772604000000,
+  "deepSleepSeconds": 3600,
+  "lightSleepSeconds": 10800,
+  "remSleepSeconds": 3600,
+  "awakeSleepSeconds": 600,
+  "averageRespirationValue": null,
+  "sleepScores": null
+ },
+ "restingHeartRate": 53
+}
