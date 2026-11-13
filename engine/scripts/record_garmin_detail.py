@@ -3,7 +3,7 @@
     python engine/scripts/record_garmin_detail.py --limit 10
 
 Run from the repo root (it imports `fetcher.client`). For the most recent
-running / strength activities listed under raw/api/api-responses/activities/,
+running / strength / cardio activities listed under raw/api/api-responses/activities/,
 it saves, read-only and paced by the existing client:
 
     activity_details/<id>.json   get_activity_details(maxchart=10000, maxpoly=0)
@@ -35,7 +35,10 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 
 DEFAULT_ROOT = REPO / "raw" / "api" / "api-responses"
-WANTED_TYPES = {"running", "treadmill_running", "trail_running", "track_running", "strength_training"}
+WANTED_TYPES = {
+    "running", "treadmill_running", "trail_running", "track_running", "strength_training",
+    "indoor_cardio", "hiit", "elliptical", "stair_climbing", "indoor_rowing",
+}
 
 log = logging.getLogger("record_garmin_detail")
 
@@ -268,7 +271,7 @@ def main(argv: list[str] | None = None) -> int:
 
     picks = recent_activities(args.root, args.limit)
     if not picks:
-        log.error("no running/strength activities under %s/activities", args.root)
+        log.error("no running/strength/cardio activities under %s/activities", args.root)
         return 1
     session = connect(allow_prompt=False)
     for start, ident, kind in picks:

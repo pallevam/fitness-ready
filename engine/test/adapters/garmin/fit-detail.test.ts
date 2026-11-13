@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { GarminAdapter } from "../../../src/adapters/garmin/adapter.ts";
-import { decodeFit, readMsg140 } from "../../../src/adapters/garmin/fit.ts";
+import { decodeFit, readFitMsg140, readMsg140 } from "../../../src/adapters/garmin/fit.ts";
 import { syntheticFit } from "../../fixtures/garmin/fit-builder.ts";
 import { FixtureSource, IST, RUN_START_UTC } from "../../fixtures/garmin/helpers.ts";
 
@@ -41,6 +41,12 @@ describe("decodeFit", () => {
   it("ignores out-of-scale TE values and missing fields", () => {
     expect(readMsg140({ 4: 255, 20: 7 })).toEqual({ aerobic_te: null, anaerobic_te: 0.7, recovery_min: null, vo2max: null });
     expect(readMsg140(undefined)).toBeNull();
+  });
+
+  it("reads msg 140 alone without decoding records, matching the full decode", () => {
+    expect(readFitMsg140(runFit())).toEqual(decodeFit(runFit()).msg140);
+    expect(readFitMsg140(syntheticFit({ startUtcMs: RUN_START_UTC, offsetMin: IST, sport: 1, subSport: 0, records: [{ s: 0, hr: 120 }] }))).toBeNull();
+    expect(readFitMsg140(new Uint8Array([1, 2, 3]))).toBeNull();
   });
 
   it("rejects bytes that are not FIT", () => {

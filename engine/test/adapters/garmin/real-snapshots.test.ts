@@ -9,7 +9,10 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { readFileSync } from "node:fs";
+
 import { GarminAdapter } from "../../../src/adapters/garmin/adapter.ts";
+import { decodeFit, readFitMsg140 } from "../../../src/adapters/garmin/fit.ts";
 import { DEFAULT_SNAPSHOT_ROOT, SnapshotSource } from "../../../src/adapters/garmin/source.ts";
 
 const root = DEFAULT_SNAPSHOT_ROOT;
@@ -71,5 +74,18 @@ describe.skipIf(!present)("real Garmin snapshots (local only)", () => {
       if (!ok) bad++;
     }
     expect(bad, `${bad} of ${fitIds.length} activities failed the FIT checks`).toBe(0);
+  });
+
+  it.skipIf(fitIds.length === 0)("list sessions with a FIT carry device recovery; the cheap reader matches the SDK", async () => {
+    let mismatched = 0;
+    for (const id of fitIds) {
+      const bytes = new Uint8Array(readFileSync(join(root, "fit", `${id}.fit`)));
+      if (JSON.stringify(readFitMsg140(bytes)) !== JSON.stringify(decodeFit(bytes).msg140)) mismatched++;
+    }
+    expect(mismatched, `${mismatched} of ${fitIds.length} files disagree`).toBe(0);
+    const sessions = await adapter.sessions({ start: dates("activities")[0] ?? range.start, end: dates("activities").at(-1) ?? range.end });
+    const withFit = sessions.filter((s) => fitIds.includes(s.id));
+    expect(withFit.length).toBeGreaterThan(0);
+    expect(count(withFit, (s: (typeof withFit)[number]) => s.recovery?.basis === "device" && s.training_effect?.source === "fit")).toBe(0);
   });
 });

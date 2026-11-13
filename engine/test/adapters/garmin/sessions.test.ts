@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import { GarminAdapter } from "../../../src/adapters/garmin/adapter.ts";
 import { sessionType, stripMessageId } from "../../../src/adapters/garmin/map.ts";
-import { FixtureSource } from "../../fixtures/garmin/helpers.ts";
+import type { RawSource } from "../../../src/adapter.ts";
+import { syntheticFit } from "../../fixtures/garmin/fit-builder.ts";
+import { FixtureSource, IST, RUN_START_UTC } from "../../fixtures/garmin/helpers.ts";
 
 const adapter = new GarminAdapter(new FixtureSource(), { tz: "Asia/Kolkata" });
 const range = { start: "2026-03-01", end: "2026-03-05" };
@@ -65,5 +67,56 @@ describe("sessions", () => {
     [null, null],
   ])("strips the message id from %s", (raw, out) => {
     expect(stripMessageId(raw)).toBe(out);
+  });
+
+  describe("enriched from the device file", () => {
+    const fit = () => syntheticFit({
+      startUtcMs: RUN_START_UTC, offsetMin: IST, sport: 1, subSport: 0,
+      records: [0, 5, 10].map((s) => ({ s, hr: 140 })),
+      msg140: { aerobic10: 36, anaerobic10: 9, recoveryMin: 1980 },
+    });
+
+    it("gets numeric TE and device recovery from msg 140 when the FIT is present", async () => {
+      const source = new FixtureSource();
+      source.fit.set("fit/1000000001", fit());
+      const [run, strength] = await new GarminAdapter(source).sessions({ start: "2026-03-02", end: "2026-03-02" });
+      expect(run!.training_effect).toEqual({ aerobic: 3.6, anaerobic: 0.9, label: "TEMPO", source: "fit" });
+      expect(run!.recovery).toEqual({ hours: 33, basis: "device" });
+      const rules = run!.provenance.steps.map((s) => s.rule);
+      expect(rules).toEqual(expect.arrayContaining(["te_from_fit_msg140", "recovery_from_fit_msg140"]));
+      expect(rules).not.toContain("te_label_only");
+      expect(run!.provenance.source).toBe("garmin:activities + garmin:fit");
+      // No FIT for the strength session: unchanged.
+      expect(strength!.training_effect!.source).toBe("label_only");
+      expect(strength!.recovery).toBeNull();
+    });
+
+    it("stays label_only with no recovery when there is no FIT", async () => {
+      const [run] = await adapter.sessions({ start: "2026-03-02", end: "2026-03-02" });
+      expect(run!.training_effect!.source).toBe("label_only");
+      expect(run!.recovery).toBeNull();
+    });
+
+    it("reads each FIT at most once per adapter, and only for sessions in range", async () => {
+      const inner = new FixtureSource();
+      inner.fit.set("fit/1000000001", fit());
+      const asked: string[] = [];
+      const counting: RawSource = {
+        json: (k) => inner.json(k),
+        bytes: (k) => { asked.push(k); return inner.bytes(k); },
+      };
+      const a = new GarminAdapter(counting);
+      await a.sessions({ start: "2026-03-02", end: "2026-03-02" });
+      const again = await a.sessions({ start: "2026-03-02", end: "2026-03-02" });
+      expect(again[0]!.recovery).toEqual({ hours: 33, basis: "device" });
+      expect(asked.sort()).toEqual(["fit/1000000001", "fit/1000000002"]);
+    });
+
+    it("ignores a corrupt FIT", async () => {
+      const source = new FixtureSource();
+      source.fit.set("fit/1000000001", new Uint8Array([14, 16, 0, 0, 9, 0, 0, 0, 46, 70, 73, 84, 0, 0, 1, 2]));
+      const [run] = await new GarminAdapter(source).sessions({ start: "2026-03-02", end: "2026-03-02" });
+      expect(run!.training_effect!.source).toBe("label_only");
+    });
   });
 });

@@ -8,7 +8,7 @@
 
 import type { Adapter, RawSource } from "../../adapter.ts";
 import type { Daily, DateRange, Flag, LocalDate, Night, Session, SessionDetail, Step } from "../../model.ts";
-import { decodeFit, type FitActivity } from "./fit.ts";
+import { decodeFit, type FitActivity, type FitMsg140, readFitMsg140 } from "./fit.ts";
 import {
   applyFit,
   hardFromZones,
@@ -32,6 +32,8 @@ export class GarminAdapter implements Adapter {
   readonly vendor = "garmin" as const;
   readonly #source: RawSource;
   readonly #opts: MapOptions;
+  /** Message 140 per activity id, decoded at most once per adapter instance. */
+  readonly #msg140 = new Map<string, Promise<FitMsg140 | null>>();
 
   constructor(source: RawSource, opts: GarminAdapterOptions = {}) {
     this.#source = source;
@@ -63,9 +65,26 @@ export class GarminAdapter implements Adapter {
     }
     // A snapshot can list the same activity under two dates; keep one.
     const seen = new Set<string>();
-    return out
+    const sessions = out
       .filter((s) => (seen.has(s.id) ? false : (seen.add(s.id), true)))
       .sort((a, b) => a.start.localeCompare(b.start));
+    // The device file is the only source of numeric training effect and
+    // recovery on watches that send labels only; read just message 140.
+    const found = await Promise.all(sessions.map((s) => this.#fitMsg140(s.id)));
+    sessions.forEach((s, i) => {
+      const msg140 = found[i];
+      if (msg140) applyFit(s, { msg140 });
+    });
+    return sessions;
+  }
+
+  #fitMsg140(id: string): Promise<FitMsg140 | null> {
+    let pending = this.#msg140.get(id);
+    if (!pending) {
+      pending = this.#source.bytes(`fit/${id}`).then((b) => (b ? readFitMsg140(b) : null), () => null);
+      this.#msg140.set(id, pending);
+    }
+    return pending;
   }
 
   async dailies(range: DateRange): Promise<Daily[]> {

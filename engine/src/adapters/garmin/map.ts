@@ -475,7 +475,7 @@ function hardFromFitZones(s: FitSession): number | null {
 }
 
 /** Overlay the device file's msg-140 numbers onto a session. Mutates and returns it. */
-export function applyFit(session: Session, fit: FitActivity): Session {
+export function applyFit(session: Session, fit: Pick<FitActivity, "msg140">): Session {
   const m = fit.msg140;
   let steps = session.provenance.steps;
   if (m && (m.aerobic_te !== null || m.anaerobic_te !== null)) {

@@ -192,3 +192,81 @@ export function decodeFit(bytes: Uint8Array): FitActivity {
     errors: errors.map((e) => e.message),
   };
 }
+
+// ------------------------------------------------- message 140 alone, cheaply
+
+/** Integer FIT base types: id -> [size, signed, invalid-is-zero]. */
+const INT_BASE: Record<number, [number, boolean, boolean]> = {
+  0: [1, false, false], 1: [1, true, false], 2: [1, false, false], 3: [2, true, false],
+  4: [2, false, false], 5: [4, true, false], 6: [4, false, false],
+  10: [1, false, true], 11: [2, false, true], 12: [4, false, true], 13: [1, false, false],
+};
+
+function readInt(view: DataView, at: number, baseType: number, size: number, little: boolean): number | null {
+  const spec = INT_BASE[baseType & 0x1f];
+  if (!spec || spec[0] !== size) return null;
+  const [, signed, zeroInvalid] = spec;
+  let v: number;
+  if (size === 1) v = signed ? view.getInt8(at) : view.getUint8(at);
+  else if (size === 2) v = signed ? view.getInt16(at, little) : view.getUint16(at, little);
+  else v = signed ? view.getInt32(at, little) : view.getUint32(at, little);
+  const invalid = zeroInvalid ? 0 : signed ? 2 ** (size * 8 - 1) - 1 : 2 ** (size * 8) - 1;
+  return v === invalid ? null : v;
+}
+
+/**
+ * Read only message 140 from a FIT file, without decoding records: walks the
+ * record headers and definitions and skips every other message's bytes. For
+ * listing sessions, where only training effect and recovery are needed.
+ * Returns null when the file has no message 140 or cannot be walked.
+ */
+export function readFitMsg140(bytes: Uint8Array): FitMsg140 | null {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (bytes.length < 14) return null;
+  const headerSize = bytes[0]!;
+  if (String.fromCharCode(bytes[8]!, bytes[9]!, bytes[10]!, bytes[11]!) !== ".FIT") return null;
+  const end = Math.min(headerSize + view.getUint32(4, true), bytes.length);
+  type Def = { global: number; little: boolean; fields: Array<[number, number, number, number]>; size: number };
+  const local = new Map<number, Def>();
+  let pos = headerSize;
+  try {
+    while (pos < end) {
+      const header = bytes[pos++]!;
+      const compressed = (header & 0x80) !== 0;
+      const localNum = compressed ? (header >> 5) & 0x3 : header & 0x0f;
+      if (!compressed && header & 0x40) {
+        const little = bytes[pos + 1] === 0;
+        const global = view.getUint16(pos + 2, little);
+        const n = bytes[pos + 4]!;
+        pos += 5;
+        const fields: Def["fields"] = [];
+        let offset = 0;
+        for (let i = 0; i < n; i++, pos += 3) {
+          fields.push([bytes[pos]!, offset, bytes[pos + 1]!, bytes[pos + 2]!]);
+          offset += bytes[pos + 1]!;
+        }
+        if (header & 0x20) {
+          const nDev = bytes[pos++]!;
+          for (let i = 0; i < nDev; i++, pos += 3) offset += bytes[pos + 1]!;
+        }
+        local.set(localNum, { global, little, fields, size: offset });
+        continue;
+      }
+      const def = local.get(localNum);
+      if (!def) return null;
+      if (def.global === 140) {
+        const mesg: Record<number, number | null> = {};
+        for (const [num, offset, size, baseType] of def.fields) {
+          if (num === 4 || num === 20 || num === 9 || num === 7) {
+            mesg[num] = readInt(view, pos + offset, baseType, size, def.little);
+          }
+        }
+        return readMsg140(mesg);
+      }
+      pos += def.size;
+    }
+  } catch {
+    return null; // truncated or malformed: behave as if there were no device file
+  }
+  return null;
+}
