@@ -35,8 +35,13 @@ source is strong, **Low** when it is suggestive.
 | Fact | Status | Source |
 |---|---|---|
 | Garmin reopened its Connect developer API on 21 Oct 2026: free Personal tier (own data) and free Startup tier (up to 1,000 users); paid Enterprise from Apr 2027. JSON summaries and FIT files, with some proprietary fields stripped. | Verified (article) | DC Rainmaker, 2026-10 |
-| The Personal key is read-only. | **Unverified** (commenters) | same |
-| Garmin's terms bar using the data to "create or maintain any AI model, AI system or AI generated knowledge base". | **Unverified, critical: check before building on the API** | same, quoted by a commenter |
+| Garmin's tiers are **Personal** (own data only, pull, read-only, 26 endpoints, "not intended for commercial applications serving multiple end users"), **Starter** (organizations, push/webhooks only, **no historical data**, limited users) and **Enterprise** (paid, "1 month +" history, unlimited users). | Verified (Garmin pages) | `garmin_api_terms.md` |
+| Garmin data coverage includes sleep, HRV, Body Battery, stress, resting HR, activities, original FIT files, training effect and per-activity VO2 max. **Not** training status or recovery time. | Verified (API spec) | same |
+| The "AI knowledge base" ban is **not in the public agreement** (Rev. B, Mar 2026). §15.10 instead requires an AI Transparency Statement and explicit, revocable consent from each user. | Verified; the ban may sit in the Personal terms behind login | same |
+| **§5.2(o) bars building an API that provides end-user data to third-party platforms not approved by Garmin in writing. A connector into Claude or ChatGPT closely matches this.** | **Verified text; critical: written approval from Garmin needed for the connector** | same |
+| Claude: scheduled tasks can use connectors (paid plans); custom remote connectors work on mobile (one on the free plan); OAuth 2.0. ChatGPT: Tasks exist with push and email, but calling third-party connectors from a task is unclear; full connector support appears limited to business plans. | Verified (Claude); Unclear (ChatGPT) | `ai_app_connectors.md` |
+| **OpenAI's app guidelines: "Do not collect, solicit, or process… Protected health information (PHI)".** Anthropic treats healthcare as a high-risk use. | Verified text; whether wearable data counts as PHI needs counsel | same |
+| Free open-source MCP servers on Garmin's Personal API already exist. | Verified | `garmin_api_terms.md` |
 | The vívoactive 5's FIT files carry undocumented message 140, which holds aerobic and anaerobic TE, recovery minutes and VO2 max that the Garmin app doesn't show. | Verified on 7 activities | this repo, 21 Oct 2026 |
 
 ## Method and caveats
@@ -58,11 +63,11 @@ source is strong, **Low** when it is suggestive.
 
 - Do persona-B users pay for, or switch to, a better answer layer, or just tolerate it?
 - How large is the local-first-only group, compared with users happy to use cloud LLMs?
-- Garmin API terms: is AI use actually allowed, and on which tier? Is the Personal
-  key read-only? Do Personal and Startup include historical backfill (needed for the
-  day-one aha)?
-- Can ChatGPT Tasks and Claude scheduled prompts call third-party connectors? This
-  decides proactive delivery (D1 or the email fallback).
+- Will Garmin approve a connector into Claude or ChatGPT in writing (§5.2(o))? On
+  which tier?
+- Without backfill on Starter, how does a new user get the day-one aha?
+- Is consumer wearable data PHI under the OpenAI and Anthropic policies? Needs
+  counsel.
 - Apple Health and Health Connect: what is the access story for an independent app?
 
 ## Updating this file
@@ -74,6 +79,9 @@ source is strong, **Low** when it is suggestive.
 - Keep the file under about two pages. Detail belongs in the per-source files.
 
 ## Change log
+
+- **13 Nov 2026:** verified Garmin's tiers and terms, and Claude and ChatGPT connector
+  rules. §5.2(o) and OpenAI's PHI ban are new critical constraints.
 
 - **13 Nov 2026:** added the open questions that segment-3 decisions depend on
   (Garmin backfill, scheduled connector calls).
